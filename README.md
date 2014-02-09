@@ -1,0 +1,2 @@
+django-emailtemplates
+=====================
