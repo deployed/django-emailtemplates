@@ -16,6 +16,14 @@ class EmailTemplateAdminForm(forms.ModelForm):
 
     class Meta:
         model = EmailTemplate
+        fields = [
+            'title',
+            'subject',
+            'content',
+            'language',
+            'created',
+            'modified',
+            ]
 
     def __init__(self, *args, **kwargs):
         super(EmailTemplateAdminForm, self).__init__(*args, **kwargs)
