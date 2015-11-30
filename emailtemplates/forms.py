@@ -3,12 +3,18 @@ import logging
 
 import os
 from django import forms
-from django.template import loader, TemplateDoesNotExist
+from django.template.loaders import app_directories
 from django.utils.translation import ugettext_lazy as _
 
 from .models import EmailTemplate
 
 logger = logging.getLogger(__name__)
+
+
+class TemplateSourceLoader(app_directories.Loader):
+    def get_source(self, template_name):
+        source, origin = self.load_template_source(template_name)
+        return source
 
 
 class EmailTemplateAdminForm(forms.ModelForm):
@@ -32,9 +38,9 @@ class EmailTemplateAdminForm(forms.ModelForm):
         super(EmailTemplateAdminForm, self).__init__(*args, **kwargs)
         self.fields['preview'].widget = forms.Textarea(attrs={'readonly': 'readonly', 'rows': 30, 'cols': 120})
         if self.initial:
+            loader = TemplateSourceLoader()
             try:
-                template = loader.get_template(os.path.join("emailtemplates", self.initial['title']))
-            except TemplateDoesNotExist, e:
-                logger.error('TemplateDoesNotExist. Details: %s', e)
-            else:
-                self.fields['preview'].initial = template.origin.reload()
+                self.fields['preview'].initial = loader.get_source(
+                    os.path.join("emailtemplates", self.initial['title']))
+            except Exception, e:
+                logger.error('Load template error. Details: %s', e)
