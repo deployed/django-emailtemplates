@@ -2,7 +2,7 @@
 import os
 from django.conf import settings
 from django.db import models
-from django.template.loaders.app_directories import app_template_dirs
+from django.template.utils import get_app_template_dirs
 from django.utils.translation import ugettext_lazy as _
 
 try:
@@ -18,7 +18,7 @@ def get_template_choices(templates_dir_name='emailtemplates', suffix='.html'):
     returns list of html templates from emailtemplates/*/
     """
     templates_list = []
-    for template_dir_path in (settings.TEMPLATE_DIRS + app_template_dirs):
+    for template_dir_path in (settings.TEMPLATE_DIRS + get_app_template_dirs('templates')):
         path = os.path.join(template_dir_path, templates_dir_name)
 
         for root, dirs, files in os.walk(path):

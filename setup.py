@@ -6,9 +6,17 @@ README = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 # allow setup.py to be run from any path
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
+install_requires = [
+    'Django>=1.8.8',
+]
+
+tests_require = [
+    'mock',
+]
+
 setup(
     name='django-emailtemplates',
-    version='0.8.3',
+    version='0.8.4',
     packages=['emailtemplates'],
     include_package_data=True,
     license='MIT License',
@@ -27,4 +35,6 @@ setup(
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
     ],
+    install_requires=install_requires,
+    tests_require=tests_require
 )
