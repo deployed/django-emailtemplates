@@ -16,6 +16,11 @@ Assumptions
 Changelog
 =========
 
+0.8.5
+-----
+
+* Fixed template loader error - added default Engine
+
 0.8.4
 -----
 

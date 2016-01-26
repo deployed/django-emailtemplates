@@ -3,6 +3,7 @@ import logging
 
 import os
 from django import forms
+from django.template import Engine
 from django.template.loaders import app_directories
 from django.utils.translation import ugettext_lazy as _
 
@@ -38,7 +39,8 @@ class EmailTemplateAdminForm(forms.ModelForm):
         super(EmailTemplateAdminForm, self).__init__(*args, **kwargs)
         self.fields['preview'].widget = forms.Textarea(attrs={'readonly': 'readonly', 'rows': 30, 'cols': 120})
         if self.initial:
-            loader = TemplateSourceLoader()
+            engine = Engine.get_default()
+            loader = TemplateSourceLoader(engine)
             try:
                 self.fields['preview'].initial = loader.get_source(
                     os.path.join("emailtemplates", self.initial['title']))
