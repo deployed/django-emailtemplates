@@ -6,8 +6,7 @@ from smtplib import SMTPException
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
-from django.template import Template, Context
-from django.template.base import TemplateDoesNotExist
+from django.template import Template, Context, TemplateDoesNotExist
 from django.template.loader import get_template
 
 from .models import now, EmailTemplate
