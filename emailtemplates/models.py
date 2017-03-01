@@ -18,7 +18,20 @@ def get_template_choices(templates_dir_name='emailtemplates', suffix='.html'):
     returns list of html templates from emailtemplates/*/
     """
     templates_list = []
-    for template_dir_path in (settings.TEMPLATE_DIRS + get_app_template_dirs('templates')):
+
+    try:
+        # for Django < 1.8
+        template_dirs = settings.TEMPLATE_DIRS
+    except AttributeError:
+        # for Django >= 1.8
+        template_dirs = []
+
+        for template_setting in settings.TEMPLATES:
+            template_dirs += template_setting['DIRS']
+
+        template_dirs = tuple(template_dirs)
+
+    for template_dir_path in (template_dirs + get_app_template_dirs('templates')):
         path = os.path.join(template_dir_path, templates_dir_name)
 
         for root, dirs, files in os.walk(path):
