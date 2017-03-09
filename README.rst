@@ -16,6 +16,11 @@ Assumptions
 Changelog
 =========
 
+0.8.6
+-----
+
+* Compatibility with Django 1.10
+
 0.8.5
 -----
 
