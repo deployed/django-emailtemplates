@@ -15,6 +15,10 @@ Assumptions
 
 Changelog
 =========
+0.8.6.1
+-------
+
+* Migrations dir fix
 
 0.8.6
 -----
