@@ -16,7 +16,7 @@ tests_require = [
 
 setup(
     name='django-emailtemplates',
-    version='0.8.6.2',
+    version='0.8.7',
     packages=['emailtemplates'],
     include_package_data=True,
     license='MIT License',

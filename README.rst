@@ -16,6 +16,11 @@ Assumptions
 Changelog
 =========
 
+0.8.7
+-----
+
+* Check syntax errors in EmailTemplate's content (admin form)
+
 0.8.6.2
 -------
 
