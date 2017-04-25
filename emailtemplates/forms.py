@@ -3,7 +3,11 @@ import logging
 
 import os
 from django import forms
+from django.core.exceptions import ValidationError
+from django.template import Context
 from django.template import Engine
+from django.template import Template
+from django.template import TemplateSyntaxError
 from django.template.loaders import app_directories
 from django.utils.translation import ugettext_lazy as _
 
@@ -46,3 +50,11 @@ class EmailTemplateAdminForm(forms.ModelForm):
                     os.path.join("emailtemplates", self.initial['title']))
             except Exception, e:
                 logger.error('Load template error. Details: %s', e)
+
+    def clean_content(self):
+        content = self.cleaned_data['content']
+        try:
+            Template(content)
+        except TemplateSyntaxError as e:
+            raise ValidationError(u"Syntax error in custom email template: %s" % e)
+        return content
