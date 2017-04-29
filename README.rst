@@ -16,6 +16,11 @@ Assumptions
 Changelog
 =========
 
+0.8.7.1
+-------
+
+* Added missing migration
+
 0.8.7
 -----
 
