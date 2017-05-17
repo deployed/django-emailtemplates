@@ -1,5 +1,5 @@
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 
 README = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 
@@ -16,8 +16,8 @@ tests_require = [
 
 setup(
     name='django-emailtemplates',
-    version='0.8.7.1',
-    packages=['emailtemplates'],
+    version='0.8.7.2',
+    packages=find_packages(),
     include_package_data=True,
     license='MIT License',
     description='A simple Django app to create emails based on database or filesystem templates.',
