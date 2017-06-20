@@ -86,8 +86,6 @@ class EmailFromTemplate(object):
         while True:
             try:
                 tmp = self.template_class.objects.get(title=self.name, language=language)
-                self.template = unicode(tmp.content)
-                self.subject = unicode(tmp.subject)
             except ObjectDoesNotExist:
                 logger.warning("Can't find EmailTemplate object in database, using default file template.")
                 break
@@ -96,8 +94,10 @@ class EmailFromTemplate(object):
                     "Can't convert to unicode EmailTemplate object from database, using default file template.")
                 break
             else:
-                logger.debug(u"Got template %s from database" % self.name)
+                self.template = unicode(tmp.content)
+                self.subject = unicode(tmp.subject) or self.subject
                 self._template_source = 'database'
+                logger.debug(u"Got template %s from database" % self.name)
                 return
         # fallback
         self.__get_template_from_file()
