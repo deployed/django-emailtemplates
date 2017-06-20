@@ -16,6 +16,11 @@ Assumptions
 Changelog
 =========
 
+0.8.7.3
+-------
+
+* Set default email title if is not defined in the database.
+
 0.8.7.1
 -------
 
