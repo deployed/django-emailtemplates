@@ -48,15 +48,14 @@ class EmailFromTemplateTest(CheckEmail):
 
 
 class EmailFromTemplateWithFixturesTest(CheckEmail):
-
     def setUp(self):
         self.language = 'pl'
-        support_template = EmailTemplate(language=self.language,
-                            title='support_respond.html',
-                            subject="Test",
-                            content="Support: {{ user_name }}")
-        support_template.save()
-
+        self.support_template = EmailTemplate.objects.create(
+            language=self.language,
+            title='support_respond.html',
+            subject="Test",
+            content="Support: {{ user_name }}"
+        )
         mail.outbox = []
         email_logger.debug = Mock()
 
@@ -69,6 +68,17 @@ class EmailFromTemplateWithFixturesTest(CheckEmail):
         to = ['tester1@example.com', 'tester2@example.com']
         eft.send_email(to)
         self.check_email_was_sent(eft, to)
+
+    def test_support_database_template_without_title(self):
+        self.support_template.subject = ''
+        self.support_template.save(update_fields=['subject'])
+        eft = EmailFromTemplate(
+            name='support_respond.html',
+            subject='default email title',
+            language=self.language
+        )
+        eft.get_object()
+        self.assertEqual(eft.subject, 'default email title')
 
     def test_friends_invitation_no_database_or_filesystem_template(self):
         eft = EmailFromTemplate()
