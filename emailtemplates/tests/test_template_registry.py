@@ -4,10 +4,9 @@ from django.test import TestCase
 from django.core import mail
 from mock import Mock
 
-from ..email import EmailFromTemplate, email_templates, EmailTemplateRegistry
+from ..email import EmailFromTemplate
+from ..registry import EmailTemplateRegistry
 from ..models import EmailTemplate
-from ..email import logger as email_logger
-from ..helpers import substr
 
 
 class EmailTemplateRegistryTest(TestCase):
@@ -39,6 +38,14 @@ class EmailTemplateRegistryTest(TestCase):
                                    help_context={'username': u'Name of user in hello expression'})
         template_registry.register('simple_template.html', help_text=u'Simple template')
         self.assertEqual(2, len(template_registry.get_email_templates()))
+
+    def test_get_email_template_names(self):
+        template_registry = EmailTemplateRegistry()
+        template_registry.register('hello_template.html', help_text=u'Hello template',
+                                   help_context={'username': u'Name of user in hello expression'})
+        template_registry.register('simple_template.html', help_text=u'Simple template')
+        self.assertIn('hello_template.html', template_registry.get_email_template_names())
+        self.assertIn('simple_template.html', template_registry.get_email_template_names())
 
 
 
