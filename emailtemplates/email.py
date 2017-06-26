@@ -4,7 +4,7 @@ import logging
 from smtplib import SMTPException
 
 from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist, ImproperlyConfigured
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
 from django.template import Template, Context, TemplateDoesNotExist
 from django.template.loader import get_template

@@ -4,19 +4,14 @@ from django.test import TestCase
 from django.core import mail
 from mock import Mock
 
-from ..email import EmailFromTemplate
 from ..registry import EmailTemplateRegistry
-from ..models import EmailTemplate
 
 
 class EmailTemplateRegistryTest(TestCase):
-    def setUp(self):
-        mail.outbox = []
 
     def test_register_template(self):
         registry = EmailTemplateRegistry()
         registry.register('hello_template.html')
-        self.assertIsNotNone(registry.get_email_template('hello_template.html'))
 
     def test_get_help_text(self):
         template_registry = EmailTemplateRegistry()
@@ -37,15 +32,15 @@ class EmailTemplateRegistryTest(TestCase):
         template_registry.register('hello_template.html', help_text=u'Hello template',
                                    help_context={'username': u'Name of user in hello expression'})
         template_registry.register('simple_template.html', help_text=u'Simple template')
-        self.assertEqual(2, len(template_registry.get_email_templates()))
+        self.assertEqual(2, len(template_registry.get_email_template_choices()))
 
     def test_get_email_template_names(self):
         template_registry = EmailTemplateRegistry()
         template_registry.register('hello_template.html', help_text=u'Hello template',
                                    help_context={'username': u'Name of user in hello expression'})
         template_registry.register('simple_template.html', help_text=u'Simple template')
-        self.assertIn('hello_template.html', template_registry.get_email_template_names())
-        self.assertIn('simple_template.html', template_registry.get_email_template_names())
+        self.assertIn('hello_template.html', template_registry.get_email_template_choices())
+        self.assertIn('simple_template.html', template_registry.get_email_template_choices())
 
 
 
