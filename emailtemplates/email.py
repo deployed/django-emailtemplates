@@ -76,7 +76,7 @@ class EmailFromTemplate(object):
         path = self.__get_path()
         try:
             self.compiled_template = get_template(path)
-        except TemplateDoesNotExist:
+        except (TemplateDoesNotExist, IOError):
             logger.warning("Can't find %s template in the filesystem, will use very default one." % path)
         else:
             self._template_source = 'filesystem'
