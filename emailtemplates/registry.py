@@ -1,6 +1,7 @@
 # coding=utf-8
 import logging
 
+from emailtemplates.email import EmailFromTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,16 @@ class RegistrationItem(object):
         self.path = path
         self.help_text = help_text or u""
         self.help_context = help_context or {}
+
+    def get_context_description(self):
+        help_text_item = lambda k, v: u"%s (%s)" % (k, v) if v else u"%s" % k
+        return u", ".join([help_text_item(k, v) for (k, v) in self.help_context.items()])
+
+    def as_form_help_text(self):
+        return u"USAGE: %s \nCONTEXT: %s" % (self.help_text, self.get_context_description())
+
+    def as_form_choice(self):
+        return self.path, self.path
 
 
 class EmailTemplateRegistry(object):
@@ -60,18 +71,18 @@ class EmailTemplateRegistry(object):
         return self._get_registration(path).help_context
 
     def get_email_template_choices(self):
-        return [(template_name, template_name) for template_name in list(set(self._registry.keys()))]
+        return [item.as_form_choice() for item in self._registry.values()]
 
-    def get_context_description(self, path):
-        help_context = self.get_help_context(path) or {}
-        return u", ".join([u"%s (%s)" % (k, v) for (k, v) in help_context.items()])
+    def get_form_help_text(self, path):
+        try:
+            form_help_text = self._get_registration(path).as_form_help_text()
+        except NotRegistered:
+            form_help_text = ""
+        return form_help_text
 
-    def get_admin_help_text_information(self, path):
-        return u"USAGE: %s \nCONTEXT: %s" % (self.get_help_text(path), self.get_context_description(path))
-
-    def create_eft(self, path, *args, **kwargs):
-        if self._get_registration(path):
-            return
+    def create_eft(self, path, **kwargs):
+        self._get_registration(path)
+        return EmailFromTemplate(name=path, **kwargs)
 
 
 # Global object for singleton registry of email templates

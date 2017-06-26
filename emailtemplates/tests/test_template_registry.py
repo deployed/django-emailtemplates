@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.core import mail
 from mock import Mock
 
+from emailtemplates.email import EmailFromTemplate
 from ..registry import EmailTemplateRegistry
 
 
@@ -34,13 +35,20 @@ class EmailTemplateRegistryTest(TestCase):
         template_registry.register('simple_template.html', help_text=u'Simple template')
         self.assertEqual(2, len(template_registry.get_email_template_choices()))
 
-    def test_get_email_template_names(self):
+    def test_get_email_template_choices(self):
         template_registry = EmailTemplateRegistry()
         template_registry.register('hello_template.html', help_text=u'Hello template',
                                    help_context={'username': u'Name of user in hello expression'})
+        self.assertEqual(1, len(template_registry.get_email_template_choices()))
+        template, _ = template_registry.get_email_template_choices()[0]
+        self.assertEqual('hello_template.html', template)
+
+    def test_create_eft(self):
+        template_registry = EmailTemplateRegistry()
         template_registry.register('simple_template.html', help_text=u'Simple template')
-        self.assertIn('hello_template.html', template_registry.get_email_template_choices())
-        self.assertIn('simple_template.html', template_registry.get_email_template_choices())
+        eft = template_registry.create_eft('simple_template.html', subject=u"Ihre bestellung")
+        self.assertEqual(EmailFromTemplate, type(eft))
+        self.assertEqual(u"Ihre bestellung", eft.subject)
 
 
 
