@@ -51,8 +51,13 @@ class EmailTemplateRegistry(object):
     def get_email_template_choices(self):
         return [(template_name, template_name) for template_name in list(set(self._registry.keys()))]
 
+    def get_context_description(self, path):
+        # return u", ".join([u"'%s' (%s)" % (k, v) for k, v in self.get_help_context(path)])
+        help_context = self.get_help_context(path) or {}
+        return u", ".join([u"%s (%s)" % (k, v) for (k, v) in help_context.items()])
+
     def get_admin_help_text_information(self, path):
-        return "Template usage: %s" % self.get_help_text(path)
+        return u"USAGE: %s \nCONTEXT: %s" % (self.get_help_text(path), self.get_context_description(path))
 
 
 # Global object for singleton registry of email templates
