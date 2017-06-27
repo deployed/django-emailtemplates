@@ -30,7 +30,7 @@ class EmailTemplateAdminForm(forms.ModelForm):
                               label=_(u'default template preview'),
                               help_text=_(u'Preview of the default template is available after selecting a template '
                                           u'and saving changes (Save and continue editing)'))
-    title = forms.ChoiceField(choices=email_templates.get_email_template_choices())
+    title = forms.ChoiceField(choices=email_templates.email_template_choices())
 
     class Meta:
         model = EmailTemplate

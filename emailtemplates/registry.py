@@ -21,12 +21,12 @@ class RegistrationItem(object):
         self.help_text = help_text or u""
         self.help_context = help_context or {}
 
-    def get_context_description(self):
+    def context_description(self):
         help_text_item = lambda k, v: u"%s (%s)" % (k, v) if v else u"%s" % k
         return u", ".join([help_text_item(k, v) for (k, v) in self.help_context.items()])
 
     def as_form_help_text(self):
-        return u"USAGE: %s \nCONTEXT: %s" % (self.help_text, self.get_context_description())
+        return u"USAGE: %s \nCONTEXT: %s" % (self.help_text, self.context_description())
 
     def as_form_choice(self):
         return self.path, self.path
@@ -45,11 +45,11 @@ class EmailTemplateRegistry(object):
             email_templates.register('hello_template.html', help_text=u'Hello template',
                 help_context={'username': u'Name of user in hello expression'})
 
-        :param path: Template file path relative to prefix
+        :param path: Template file path. It will become immutable registry lookup key.
         :param help_text: Help text to describe template in admin site
         :param help_context: Dictionary of possible keys used in the context and description of their content
 
-        If a model is already registered, this will raise AlreadyRegistered.
+        If an email template is already registered, this will raise AlreadyRegistered.
         """
         if path in self._registry:
             raise AlreadyRegistered('The template %s is already registered' % path)
@@ -60,6 +60,11 @@ class EmailTemplateRegistry(object):
         return path in self._registry
 
     def _get_registration(self, path):
+        """
+        Returns registration item for specified path.
+
+        If an email template is not registered, this will raise NotRegistered.
+        """
         if not self.is_registered(path):
             raise NotRegistered("Email template not registered")
         return self._registry[path]
@@ -70,19 +75,33 @@ class EmailTemplateRegistry(object):
     def get_help_context(self, path):
         return self._get_registration(path).help_context
 
-    def get_email_template_choices(self):
-        return [item.as_form_choice() for item in self._registry.values()]
+    def registration_items(self):
+        return self._registry.values()
+
+    def email_template_choices(self):
+        """
+        Returns list of choices that can be used in email template form field choices.
+        """
+        return [item.as_form_choice() for item in self.registration_items()]
 
     def get_form_help_text(self, path):
+        """
+        Returns text that can be used as form help text for creating email templates.
+        """
         try:
             form_help_text = self._get_registration(path).as_form_help_text()
         except NotRegistered:
-            form_help_text = ""
+            form_help_text = u""
         return form_help_text
 
     def create_eft(self, path, **kwargs):
-        self._get_registration(path)
-        return EmailFromTemplate(name=path, **kwargs)
+        """
+        Returns EmailFromTemplate instance from registration items.
+        Additional information like email subject can be added in kwargs.
+        Name of the mail template is taken
+        """
+        item = self._get_registration(path)
+        return EmailFromTemplate(name=item.path, **kwargs)
 
 
 # Global object for singleton registry of email templates
