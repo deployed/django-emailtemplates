@@ -51,8 +51,7 @@ class EmailTemplateAdminForm(forms.ModelForm):
             engine = Engine.get_default()
             loader = TemplateSourceLoader(engine)
             try:
-                self.fields['preview'].initial = loader.get_source(
-                    os.path.join("emailtemplates", self.initial['title']))
+                self.fields['preview'].initial = loader.get_source(self.initial['title'])
             except Exception, e:
                 logger.error('Load template error. Details: %s', e)
 
