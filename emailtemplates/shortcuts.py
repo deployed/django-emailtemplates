@@ -8,7 +8,8 @@ def send_email(name, ctx_dict, send_to=None, subject=u'Subject', **kwargs):
 
     @return: None
     """
-    eft = EmailFromTemplate(name=name)
+
+    eft = EmailFromTemplate(name=name, registry_validation=False)
     eft.subject = subject
     eft.context = ctx_dict
     eft.get_object()
