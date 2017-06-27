@@ -25,7 +25,9 @@ class RegistrationItem(object):
         return u", ".join([help_text_item(k, v) for (k, v) in self.help_context.items()])
 
     def as_form_help_text(self):
-        return u"USAGE: %s \nCONTEXT: %s" % (self.help_text, self.context_description())
+        item_help_text = u"USAGE: %s" % self.help_text if self.help_text else u""
+        item_help_context = u"CONTEXT: %s" % self.context_description() if self.help_context else u""
+        return u"%s | %s" % (item_help_text, item_help_context)
 
     def as_form_choice(self):
         return self.path, self.path
