@@ -1,8 +1,6 @@
 # coding=utf-8
 from django.test import TestCase
 
-
-from emailtemplates.email import EmailFromTemplate
 from ..registry import EmailTemplateRegistry, RegistrationItem
 
 
@@ -73,13 +71,6 @@ class EmailTemplateRegistryTest(TestCase):
         items = template_registry.registration_items()
         self.assertEqual(1, len(items))
         self.assertEqual('hello_template.html', items[0].path)
-
-    def test_create_eft(self):
-        template_registry = EmailTemplateRegistry()
-        template_registry.register('simple_template.html', help_text=u'Simple template')
-        eft = template_registry.create_eft('simple_template.html', subject=u"Ihre bestellung")
-        self.assertEqual(EmailFromTemplate, type(eft))
-        self.assertEqual(u"Ihre bestellung", eft.subject)
 
 
 

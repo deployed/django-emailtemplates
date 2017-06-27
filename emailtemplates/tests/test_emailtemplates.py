@@ -9,6 +9,7 @@ from ..email import EmailFromTemplate
 from ..models import EmailTemplate
 from ..email import logger as email_logger
 from ..helpers import substr
+from ..registry import email_templates, NotRegistered, EmailTemplateRegistry
 
 
 class CheckEmail(TestCase):
@@ -26,10 +27,11 @@ class CheckEmail(TestCase):
 class EmailFromTemplateTest(CheckEmail):
     def setUp(self):
         mail.outbox = []
+        email_templates = EmailTemplateRegistry()
         email_logger.warning = Mock()
 
     def test_empty_object(self):
-        eft = EmailFromTemplate()
+        eft = EmailFromTemplate(registry_validation=False)
         self.assertTrue(isinstance(eft, object))
         eft.render_message()
         to = ['to@example.com']
@@ -37,7 +39,7 @@ class EmailFromTemplateTest(CheckEmail):
         self.check_email_was_sent(eft, to)
 
     def test_with_empty_db_object(self):
-        eft = EmailFromTemplate()
+        eft = EmailFromTemplate(registry_validation=False)
         eft.get_object()
         email_logger.warning.assert_has_calls(substr("Can't find EmailTemplate object in database"))
         email_logger.warning.assert_has_calls(substr("template in the filesystem, will use very default one"))
@@ -46,10 +48,18 @@ class EmailFromTemplateTest(CheckEmail):
         eft.send_email(to)
         self.check_email_was_sent(eft, to)
 
+    def test_init_check_email_templates_registry(self):
+        with self.assertRaises(NotRegistered):
+            email_template = EmailFromTemplate("some_template.html")
+        email_templates.register("some_template.html")
+        email_template = EmailFromTemplate("some_template.html")
+        self.assertTrue(email_templates.is_registered("some_template.html"))
+
 
 class EmailFromTemplateWithFixturesTest(CheckEmail):
     def setUp(self):
         self.language = 'pl'
+        email_templates = EmailTemplateRegistry()
         self.support_template = EmailTemplate.objects.create(
             language=self.language,
             title='support_respond.html',
@@ -60,7 +70,7 @@ class EmailFromTemplateWithFixturesTest(CheckEmail):
         email_logger.debug = Mock()
 
     def test_support_database_template(self):
-        eft = EmailFromTemplate(name='support_respond.html', language=self.language)
+        eft = EmailFromTemplate(name='support_respond.html', language=self.language, registry_validation=False)
         eft.get_object()
         email_logger.debug.assert_called_with(substr("Got template"))
         self.assertEqual(eft.template_source, 'database')
@@ -75,13 +85,14 @@ class EmailFromTemplateWithFixturesTest(CheckEmail):
         eft = EmailFromTemplate(
             name='support_respond.html',
             subject='default email title',
-            language=self.language
+            language=self.language,
+            registry_validation=False
         )
         eft.get_object()
         self.assertEqual(eft.subject, 'default email title')
 
     def test_friends_invitation_no_database_or_filesystem_template(self):
-        eft = EmailFromTemplate()
+        eft = EmailFromTemplate(registry_validation=False)
         eft.context = {'user_name': 'Alibaba',
                        'personal_message': "I'd like you te be site member!",
                        'landing_url': 'http://example.com/followers/612/'}

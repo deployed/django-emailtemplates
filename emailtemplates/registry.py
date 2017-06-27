@@ -1,7 +1,6 @@
 # coding=utf-8
 import logging
 
-from emailtemplates.email import EmailFromTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +58,7 @@ class EmailTemplateRegistry(object):
     def is_registered(self, path):
         return path in self._registry
 
-    def _get_registration(self, path):
+    def get_registration(self, path):
         """
         Returns registration item for specified path.
 
@@ -70,10 +69,10 @@ class EmailTemplateRegistry(object):
         return self._registry[path]
 
     def get_help_text(self, path):
-        return self._get_registration(path).help_text
+        return self.get_registration(path).help_text
 
     def get_help_context(self, path):
-        return self._get_registration(path).help_context
+        return self.get_registration(path).help_context
 
     def registration_items(self):
         return self._registry.values()
@@ -89,19 +88,10 @@ class EmailTemplateRegistry(object):
         Returns text that can be used as form help text for creating email templates.
         """
         try:
-            form_help_text = self._get_registration(path).as_form_help_text()
+            form_help_text = self.get_registration(path).as_form_help_text()
         except NotRegistered:
             form_help_text = u""
         return form_help_text
-
-    def create_eft(self, path, **kwargs):
-        """
-        Returns EmailFromTemplate instance from registration items.
-        Additional information like email subject can be added in kwargs.
-        Name of the mail template is taken
-        """
-        item = self._get_registration(path)
-        return EmailFromTemplate(name=item.path, **kwargs)
 
 
 # Global object for singleton registry of email templates

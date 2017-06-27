@@ -2,13 +2,13 @@
 from .email import EmailFromTemplate
 
 
-def send_email(name, ctx_dict, send_to=None, subject=u'Subject', prefix='emailtemplates', **kwargs):
+def send_email(name, ctx_dict, send_to=None, subject=u'Subject', **kwargs):
     """
     Shortcut function for EmailFromTemplate class
 
     @return: None
     """
-    eft = EmailFromTemplate(prefix=prefix, name=name)
+    eft = EmailFromTemplate(name=name)
     eft.subject = subject
     eft.context = ctx_dict
     eft.get_object()

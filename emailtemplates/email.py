@@ -10,6 +10,7 @@ from django.template import Template, Context, TemplateDoesNotExist
 from django.template.loader import get_template
 
 from .models import now, EmailTemplate
+from .registry import email_templates
 
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 class EmailFromTemplate(object):
     """
     EmailFromTemplate class tries to load template from database. If template object is not found,
-    it tries to load template from templates/emailtemplates/{{prefix}} directory.
+    it tries to load template from templates/emailtemplates directory.
     This enables developers to create default templates for emails that are sent,
     and Site Admins to easily override the templates and provide email translations.
 
@@ -30,8 +31,8 @@ class EmailFromTemplate(object):
                  from_email=settings.DEFAULT_FROM_EMAIL,
                  language=settings.LANGUAGE_CODE,
                  subject="",
-                 prefix="",
-                 template_class=EmailTemplate
+                 template_class=EmailTemplate,
+                 registry_validation=True,
     ):
         """
         Class constructor
@@ -40,17 +41,18 @@ class EmailFromTemplate(object):
         @param from_email: sender email address, by default settings.DEFAULT_FROM_EMAIL
         @param language: email language, by default settings.LANGUAGE_CODE
         @param subject: subject of the email
-        @param prefix: folder, where templates are stored (e.g. prefix 'email' and name 't.htm' will search email/t.htm)
         @param template_class: class, template objects will be retrieved from
+        @param registry_validation: if True template must be registered prior to instantiating EmailFromTemplate
 
         By default 'date' context variable is filled in.
         """
+        if registry_validation:
+            email_templates.get_registration(name)
         self.from_email = from_email
         self.template_class = template_class
         self.subject = subject
         self.language = language
         self.name = name
-        self.prefix = prefix
 
         self.template = None
         self.compiled_template = None  # for storing compiled template
@@ -70,7 +72,7 @@ class EmailFromTemplate(object):
         return self._template_source
 
     def __get_path(self):
-        return os.path.join(self.prefix, self.name)
+        return self.name
 
     def __get_template_from_file(self):
         path = self.__get_path()
