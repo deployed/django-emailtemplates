@@ -16,6 +16,15 @@ Assumptions
 Changelog
 =========
 
+1.0.0
+-----
+
+* This version introduced **backward incompatible** EmailTemplateRegistry.
+* All EmailTemplates must be registered using email_templates.register(path).
+Not registered email templates will raise NotRegistered exception.
+Registry validation can be avoid by creating email template with flag registry_validation set to False.
+* Removed prefix from EmailFromTemplate. All templates must be located in {{templates}}/emailtemplates.
+
 0.8.7.3
 -------
 
