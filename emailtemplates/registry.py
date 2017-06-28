@@ -1,5 +1,6 @@
 # coding=utf-8
 import logging
+from django.utils.translation import ugettext_lazy as _
 
 
 logger = logging.getLogger(__name__)
@@ -25,8 +26,8 @@ class RegistrationItem(object):
         return u", ".join([help_text_item(k, v) for (k, v) in self.help_context.items()])
 
     def as_form_help_text(self):
-        item_help_text = u"USAGE: %s" % self.help_text if self.help_text else u""
-        item_help_context = u"CONTEXT: %s" % self.context_description() if self.help_context else u""
+        item_help_text = _(u"USAGE: %s") % self.help_text if self.help_text else u""
+        item_help_context = _(u"CONTEXT: %s") % self.context_description() if self.help_context else u""
         return u"%s | %s" % (item_help_text, item_help_context)
 
     def as_form_choice(self):
