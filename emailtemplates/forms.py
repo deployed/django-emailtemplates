@@ -10,7 +10,10 @@ from django.template import Template
 from django.template import TemplateSyntaxError
 from django.template.loaders import app_directories
 from django.utils.translation import ugettext_lazy as _
+from django.utils.safestring import mark_safe
 
+
+from emailtemplates.registry import email_templates
 from .models import EmailTemplate
 
 logger = logging.getLogger(__name__)
@@ -27,6 +30,7 @@ class EmailTemplateAdminForm(forms.ModelForm):
                               label=_(u'default template preview'),
                               help_text=_(u'Preview of the default template is available after selecting a template '
                                           u'and saving changes (Save and continue editing)'))
+    title = forms.ChoiceField(choices=email_templates.email_template_choices())
 
     class Meta:
         model = EmailTemplate
@@ -42,12 +46,12 @@ class EmailTemplateAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(EmailTemplateAdminForm, self).__init__(*args, **kwargs)
         self.fields['preview'].widget = forms.Textarea(attrs={'readonly': 'readonly', 'rows': 30, 'cols': 120})
+        self.fields['title'].help_text = mark_safe(email_templates.get_form_help_text(self.initial.get('title')))
         if self.initial:
             engine = Engine.get_default()
             loader = TemplateSourceLoader(engine)
             try:
-                self.fields['preview'].initial = loader.get_source(
-                    os.path.join("emailtemplates", self.initial['title']))
+                self.fields['preview'].initial = loader.get_source(self.initial['title'])
             except Exception, e:
                 logger.error('Load template error. Details: %s', e)
 
