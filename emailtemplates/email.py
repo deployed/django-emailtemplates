@@ -110,8 +110,7 @@ class EmailFromTemplate(object):
 
     def render_message(self):
         self.__compile_template()
-        context = Context(self.context)
-        self.message = self.compiled_template.render(context)
+        self.message = self.compiled_template.render(self.context)
 
     def send_email(self, send_to, *args, **kwargs):
         """
