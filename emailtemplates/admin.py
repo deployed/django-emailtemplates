@@ -1,5 +1,6 @@
 # coding=utf-8
 from django.contrib import admin
+
 from .forms import EmailTemplateAdminForm
 from .models import EmailTemplate
 
@@ -15,5 +16,7 @@ class EmailTemplateAdmin(admin.ModelAdmin):
     form = EmailTemplateAdminForm
     save_on_top = True
     save_as = True
+    readonly_fields = ['created', 'modified']
+
 
 admin.site.register(EmailTemplate, EmailTemplateAdmin)

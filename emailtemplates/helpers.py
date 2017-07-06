@@ -1,6 +1,8 @@
 # coding=utf-8
 from string import lower
 
+from django.template.loaders import app_directories
+
 
 class SubstringMatcher(object):
     """
@@ -14,6 +16,7 @@ class SubstringMatcher(object):
     This would do the same, but requires exactly the same argument content:
     email_logger.warning.assert_called_with("Can't find EmailTemplate object in database, using default file template.")
     """
+
     def __init__(self, containing):
         self.containing = lower(containing)
 
@@ -28,4 +31,11 @@ class SubstringMatcher(object):
 
     __repr__ = __unicode__
 
+
 substr = SubstringMatcher
+
+
+class TemplateSourceLoader(app_directories.Loader):
+    def get_source(self, template_name):
+        source, origin = self.load_template_source(template_name)
+        return source
