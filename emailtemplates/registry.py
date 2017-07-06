@@ -21,14 +21,17 @@ class RegistrationItem(object):
         self.help_text = help_text or u""
         self.help_context = help_context or {}
 
+    def _context_key(self, key):
+        return u"<b>{{ %s }}</b>" % key
+
     def context_description(self):
-        help_text_item = lambda k, v: u"%s (%s)" % (k, v) if v else u"%s" % k
-        return u", ".join([help_text_item(k, v) for (k, v) in self.help_context.items()])
+        help_text_item = lambda k, v: u"%s - %s" % (self._context_key(k), v) if v else u"%s" % self._context_key(k)
+        return u"<br/>".join([help_text_item(k, v) for (k, v) in sorted(self.help_context.items())])
 
     def as_form_help_text(self):
-        item_help_text = _(u"USAGE: %s") % self.help_text if self.help_text else u""
-        item_help_context = _(u"CONTEXT: %s") % self.context_description() if self.help_context else u""
-        return u"%s | %s" % (item_help_text, item_help_context)
+        item_help_text = _(u"<b>USAGE: %s</b>") % self.help_text if self.help_text else u""
+        item_help_context = _(u"<b>CONTEXT:</b><br/>%s") % self.context_description() if self.help_context else u""
+        return u"<br/>".join((item_help_text, item_help_context))
 
     def as_form_choice(self):
         return self.path, self.path
