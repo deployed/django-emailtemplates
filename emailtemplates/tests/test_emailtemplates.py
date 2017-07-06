@@ -1,14 +1,16 @@
 # coding=utf-8
+import mock
 from django.conf import settings
-from django.test import TestCase
 from django.core import mail
+from django.test import TestCase
 from django.utils.html import escape
 from mock import Mock
 
+from emailtemplates.helpers import TemplateSourceLoader
 from ..email import EmailFromTemplate
-from ..models import EmailTemplate
 from ..email import logger as email_logger
 from ..helpers import substr
+from ..models import EmailTemplate
 from ..registry import email_templates, NotRegistered, EmailTemplateRegistry
 
 
@@ -104,3 +106,30 @@ class EmailFromTemplateWithFixturesTest(CheckEmail):
         self.assertEqual(eft.template_source, 'default')
         eft.send_email(to)
         self.check_email_was_sent(eft, to)
+
+
+class EmailTemplateTest(TestCase):
+    def setUp(self):
+        self.default_content = '<h1>TEST DEFAULT CONTENT</h1>'
+        self.email_template = EmailTemplate.objects.create(title='template-1.html')
+
+    @mock.patch.object(TemplateSourceLoader, 'get_source')
+    def test_get_default_content(self, mock_source):
+        mock_source.return_value = self.default_content
+        self.assertEqual(self.email_template.get_default_content(), self.default_content)
+
+    @mock.patch.object(TemplateSourceLoader, 'get_source', mock.Mock(side_effect=Exception('error...')))
+    def test_get_empty_default_content_if_error(self):
+        self.assertEqual(self.email_template.get_default_content(), '')
+
+    @mock.patch.object(TemplateSourceLoader, 'get_source')
+    def test_save_default_content(self, mock_source):
+        mock_source.return_value = self.default_content
+        email_template = EmailTemplate.objects.create(title='template-2.html')
+        self.assertEqual(email_template.content, self.default_content)
+
+    @mock.patch.object(TemplateSourceLoader, 'get_source')
+    def test_do_not_override_existing_content(self, mock_source):
+        mock_source.return_value = self.default_content
+        email_template = EmailTemplate.objects.create(title='template-2.html', content='<h1>New content</h1>')
+        self.assertEqual(email_template.content, '<h1>New content</h1>')

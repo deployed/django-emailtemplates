@@ -7,8 +7,6 @@ from django.views import View
 
 from emailtemplates.models import EmailTemplate
 
-__author__ = 'Michal Czuba <michal.czuba@deployed.pl>'
-
 
 class EmailPreviewView(View):
     def get_email_template(self):

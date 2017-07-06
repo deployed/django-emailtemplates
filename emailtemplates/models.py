@@ -42,7 +42,7 @@ class EmailTemplate(models.Model):
         try:
             return loader.get_source(self.title)
         except Exception as e:
-            logger.error('Load template error. Details: %s', e)
+            logger.error('Error loading template %s. Details: %s ', self.title, e)
             return ''
 
     def save(self, *args, **kwargs):
