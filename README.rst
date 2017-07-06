@@ -16,6 +16,13 @@ Assumptions
 Changelog
 =========
 
+1.0.1
+-----
+
+* better admin panel
+* show email preview action
+* set default email content from related template
+
 1.0.0
 -----
 
