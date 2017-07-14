@@ -15,8 +15,7 @@ class EmailPreviewView(View):
         self.email_template = get_object_or_404(EmailTemplate, pk=self.kwargs['pk'])
 
     def get_context_data(self):
-        context = email_templates.get_help_content(self.email_template.title)
-        return context
+        return email_templates.get_help_content(self.email_template.title)
 
     def get(self, request, *args, **kwargs):
         self.get_email_template()
