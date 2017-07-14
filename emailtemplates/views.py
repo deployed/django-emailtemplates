@@ -12,14 +12,15 @@ from emailtemplates.registry import email_templates
 class EmailPreviewView(View):
 
     def get_email_template(self):
-        self.email_template = get_object_or_404(EmailTemplate, pk=self.kwargs['pk'])
+        return get_object_or_404(EmailTemplate, pk=self.kwargs['pk'])
 
     def get_context_data(self):
-        return email_templates.get_help_content(self.email_template.title)
+        email_template = self.get_email_template()
+        return email_templates.get_help_content(email_template.title)
 
     def get(self, request, *args, **kwargs):
-        self.get_email_template()
-        email_content = Template(self.email_template.content)
+        email_template = self.get_email_template()
+        email_content = Template(email_template.content)
         return HttpResponse(
             email_content.render(Context(self.get_context_data())),
             content_type='text/html; charset=utf-8'
