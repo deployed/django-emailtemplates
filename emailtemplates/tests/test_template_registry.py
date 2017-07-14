@@ -1,7 +1,34 @@
 # coding=utf-8
 from django.test import TestCase
 
-from ..registry import EmailTemplateRegistry, RegistrationItem
+from ..registry import EmailTemplateRegistry, RegistrationItem, HelpContext
+
+
+class HelpContextTest(TestCase):
+
+    def test_get_help_keys(self):
+        help_context = HelpContext({
+            'username': (u'Name of user in hello expression', u'superman_90'),
+            'full_name': (u'Full user name', u'John Smith'),
+            'property': u'Some other property',
+        })
+        self.assertDictEqual(help_context.get_help_keys(), {
+            'username': u'Name of user in hello expression',
+            'full_name': u'Full user name',
+            'property': u'Some other property',
+        })
+
+    def test_get_help_values(self):
+        help_context = HelpContext({
+            'username': (u'Name of user in hello expression', u'superman_90'),
+            'full_name': (u'Full user name', u'John Smith'),
+            'property': u'Some other property',
+        })
+        self.assertDictEqual(help_context.get_help_values(), {
+            'username': u'superman_90',
+            'full_name': u'John Smith',
+            'property': u'<property>',
+        })
 
 
 class RegistrationItemTest(TestCase):
@@ -57,11 +84,13 @@ class EmailTemplateRegistryTest(TestCase):
                                    help_context={
                                        'username': (u'Name of user in hello expression', u'superman_90'),
                                        'full_name': (u'Full user name', u'John Smith'),
+                                       'property': u'Some other property',
                                    })
         help_content = template_registry.get_help_content('hello_template.html')
         self.assertDictEqual(help_content, {
             'username': u'superman_90',
             'full_name': u'John Smith',
+            'property': u'<property>',
         })
 
     def test_get_email_templates(self):

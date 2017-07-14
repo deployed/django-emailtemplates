@@ -32,6 +32,8 @@ class HelpContext(object):
         for k, v in self.help_context.items():
             if isinstance(v, tuple) and len(v) == 2:
                 help_values[k] = v[1]
+            else:
+                help_values[k] = u"<%s>" % k
         return help_values
 
 
@@ -51,11 +53,11 @@ class RegistrationItem(object):
 
     def context_description(self):
         help_text_item = lambda k, v: u"%s - %s" % (self._context_key(k), v) if v else u"%s" % self._context_key(k)
-        return u"<br/>".join([help_text_item(k, v) for (k, v) in sorted(self.help_context.items())])
+        return u"<br/>".join([help_text_item(k, v) for (k, v) in sorted(self.help_context_obj.get_help_keys().items())])
 
     def as_form_help_text(self):
         item_help_text = _(u"<b>USAGE: %s</b>") % self.help_text if self.help_text else u""
-        item_help_context = _(u"<b>CONTEXT:</b><br/>%s") % self.context_description() if self.help_context else u""
+        item_help_context = _(u"<b>CONTEXT:</b><br/>%s") % self.context_description() if self.help_context_obj.get_help_keys() else u""
         return u"<br/>".join((item_help_text, item_help_context))
 
     def as_form_choice(self):
