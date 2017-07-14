@@ -15,10 +15,16 @@ class NotRegistered(Exception):
 
 
 class HelpContext(object):
+    """
+    Provides helpers methods for displaying help context keys (descriptions) and values (examples).
+    """
     def __init__(self, help_context):
         self.help_context = help_context or {}
 
     def get_help_keys(self):
+        """
+        Returns dict of help_context keys (description texts used in `EmailRegistry.register()` method).
+        """
         help_keys = {}
         for k, v in self.help_context.items():
             if isinstance(v, tuple):
@@ -28,6 +34,9 @@ class HelpContext(object):
         return help_keys
 
     def get_help_values(self):
+        """
+        Returns dict of help_context values (example values submitted in `EmailRegistry.register()` method).
+        """
         help_values = {}
         for k, v in self.help_context.items():
             if isinstance(v, tuple) and len(v) == 2:
@@ -83,6 +92,9 @@ class EmailTemplateRegistry(object):
         :param path: Template file path. It will become immutable registry lookup key.
         :param help_text: Help text to describe template in admin site
         :param help_context: Dictionary of possible keys used in the context and description of their content
+
+        `help_context` items values may be strings or tuples of two strings. If strings, then email template preview
+        will use variable names to fill context, otherwise the second tuple element will become example value.
 
         If an email template is already registered, this will raise AlreadyRegistered.
         """

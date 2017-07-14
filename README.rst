@@ -16,6 +16,11 @@ Assumptions
 Changelog
 =========
 
+1.0.2
+-----
+
+* `help_context` parameter of `EmailRegistry.register()` may now contain tuple of description and example value shown in preview
+
 1.0.1
 -----
 
