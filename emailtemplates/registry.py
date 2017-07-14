@@ -14,12 +14,37 @@ class NotRegistered(Exception):
     pass
 
 
+class HelpContext(object):
+    def __init__(self, help_context):
+        self.help_context = help_context or {}
+
+    def get_help_keys(self):
+        help_keys = {}
+        for k, v in self.help_context.items():
+            if isinstance(v, tuple) and len(v) == 2:
+                help_keys[k] = v[0]
+            else:
+                help_keys[k] = v
+        return help_keys
+
+    def get_help_values(self):
+        help_values = {}
+        for k, v in self.help_context.items():
+            if isinstance(v, tuple) and len(v) == 2:
+                help_values[k] = v[1]
+        return help_values
+
+
 class RegistrationItem(object):
 
-    def __init__(self, path, help_text=None, help_context=None):
+    def __init__(self, path, help_text=u"", help_context=None):
         self.path = path
-        self.help_text = help_text or u""
-        self.help_context = help_context or {}
+        self.help_text = help_text
+        self.help_context_obj = HelpContext(help_context)
+
+    @property
+    def help_context(self):
+        return self.help_context_obj.get_help_keys()
 
     def _context_key(self, key):
         return u"<b>{{ %s }}</b>" % key
@@ -35,6 +60,9 @@ class RegistrationItem(object):
 
     def as_form_choice(self):
         return self.path, self.path
+
+    def get_help_content(self):
+        return self.help_context_obj.get_help_values()
 
 
 class EmailTemplateRegistry(object):
@@ -79,6 +107,9 @@ class EmailTemplateRegistry(object):
 
     def get_help_context(self, path):
         return self.get_registration(path).help_context
+
+    def get_help_content(self, path):
+        return self.get_registration(path).get_help_content()
 
     def registration_items(self):
         return self._registry.values()
