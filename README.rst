@@ -20,6 +20,7 @@ Changelog
 -----
 
 * `help_context` parameter of `EmailRegistry.register()` may now contain tuple of description and example value shown in preview
+* Changed EmailTemplateAdminForm title to use ChoiceField choices as lazy function. This way all registered templates are printed in admin form, independent of order Python loads application modules.
 
 1.0.1
 -----
