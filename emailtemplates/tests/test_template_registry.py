@@ -1,7 +1,34 @@
 # coding=utf-8
 from django.test import TestCase
 
-from ..registry import EmailTemplateRegistry, RegistrationItem
+from ..registry import EmailTemplateRegistry, RegistrationItem, HelpContext
+
+
+class HelpContextTest(TestCase):
+
+    def test_get_help_keys(self):
+        help_context = HelpContext({
+            'username': (u'Name of user in hello expression', u'superman_90'),
+            'full_name': (u'Full user name', u'John Smith'),
+            'property': u'Some other property',
+        })
+        self.assertDictEqual(help_context.get_help_keys(), {
+            'username': u'Name of user in hello expression',
+            'full_name': u'Full user name',
+            'property': u'Some other property',
+        })
+
+    def test_get_help_values(self):
+        help_context = HelpContext({
+            'username': (u'Name of user in hello expression', u'superman_90'),
+            'full_name': (u'Full user name', u'John Smith'),
+            'property': u'Some other property',
+        })
+        self.assertDictEqual(help_context.get_help_values(), {
+            'username': u'superman_90',
+            'full_name': u'John Smith',
+            'property': u'<property>',
+        })
 
 
 class RegistrationItemTest(TestCase):
@@ -9,7 +36,7 @@ class RegistrationItemTest(TestCase):
     def test_context_description(self):
         item = RegistrationItem('hello_template.html', help_text=u'Hello template',
                                 help_context={'username': u'Name of user in hello expression'})
-        self.assertEqual(item.context_description(), u"username (Name of user in hello expression)")
+        self.assertIn(u"<b>{{ username }}</b>", item.context_description())
 
     def test_as_form_help_text(self):
         item = RegistrationItem('hello_template.html', help_text=u'Hello template',
@@ -50,6 +77,21 @@ class EmailTemplateRegistryTest(TestCase):
                                    help_context={'username': u'Name of user in hello expression'})
         help_context = template_registry.get_help_context('hello_template.html')
         self.assertIn('username', help_context)
+
+    def test_get_help_content(self):
+        template_registry = EmailTemplateRegistry()
+        template_registry.register('hello_template.html', help_text=u'Hello template',
+                                   help_context={
+                                       'username': (u'Name of user in hello expression', u'superman_90'),
+                                       'full_name': (u'Full user name', u'John Smith'),
+                                       'property': u'Some other property',
+                                   })
+        help_content = template_registry.get_help_content('hello_template.html')
+        self.assertDictEqual(help_content, {
+            'username': u'superman_90',
+            'full_name': u'John Smith',
+            'property': u'<property>',
+        })
 
     def test_get_email_templates(self):
         template_registry = EmailTemplateRegistry()

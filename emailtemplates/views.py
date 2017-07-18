@@ -6,14 +6,17 @@ from django.template import Template, Context
 from django.views import View
 
 from emailtemplates.models import EmailTemplate
+from emailtemplates.registry import email_templates
 
 
 class EmailPreviewView(View):
+
     def get_email_template(self):
         return get_object_or_404(EmailTemplate, pk=self.kwargs['pk'])
 
     def get_context_data(self):
-        return {}
+        email_template = self.get_email_template()
+        return email_templates.get_help_content(email_template.title)
 
     def get(self, request, *args, **kwargs):
         email_template = self.get_email_template()
