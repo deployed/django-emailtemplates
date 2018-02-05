@@ -16,6 +16,11 @@ Assumptions
 Changelog
 =========
 
+1.0.3
+-----
+
+* Django 1.11 compatibility
+
 1.0.2
 -----
 
