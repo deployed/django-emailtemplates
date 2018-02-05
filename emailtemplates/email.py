@@ -6,7 +6,7 @@ from smtplib import SMTPException
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMessage
-from django.template import Template, Context, TemplateDoesNotExist
+from django.template import Template, TemplateDoesNotExist
 from django.template.loader import get_template
 
 from .models import now, EmailTemplate
@@ -110,8 +110,7 @@ class EmailFromTemplate(object):
 
     def render_message(self):
         self.__compile_template()
-        context = Context(self.context)
-        self.message = self.compiled_template.render(context)
+        self.message = self.compiled_template.render(self.context)
 
     def send_email(self, send_to, *args, **kwargs):
         """
