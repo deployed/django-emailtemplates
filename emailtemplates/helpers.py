@@ -1,8 +1,10 @@
 # coding=utf-8
+from importlib import import_module
 from string import lower
 
 from django.template.loaders import app_directories
 from django.contrib.auth import get_user_model
+from django.conf import settings
 
 
 class SubstringMatcher(object):
@@ -48,9 +50,18 @@ def mass_mailing_recipients():
     Default behavior will be to return list of all active users' emails.
     This can be changed by providing callback in settings return some other list of users,
     when user emails are stored in many, non default models.
+    To accomplish that add constant MASS_EMAIL_RECIPIENTS to settings. It should contain path to function, e.g.
+    >>> MASS_EMAIL_RECIPIENTS = 'emailtemplates.helpers.mass_mailing_recipients'
 
     :rtype iterable
     """
+    if hasattr(settings, 'MASS_EMAIL_RECIPIENTS'):
+        callback_name = settings.MASS_EMAIL_RECIPIENTS.split('.')
+        module_name = '.'.join(callback_name[:-1])
+        func_name = callback_name[-1]
+        module = import_module(module_name)
+        func = getattr(module, func_name, lambda: [])
+        return func()
     User = get_user_model()
     if hasattr(User, 'is_active') and hasattr(User, 'email'):
         return User.objects.filter(is_active=True).values_list('email', flat=True).distinct()

@@ -59,16 +59,11 @@ class MassEmailMessage(models.Model):
     def sent(self):
         return bool(self.date_sent)
 
-    def get_recipients(self):
-        # TODO: recipients from settings callback if available
-        recipients = mass_mailing_recipients()
-        return recipients
-
     def send(self, recipients=None):
-        recipients = recipients or self.get_recipients()
+        recipients = recipients or mass_mailing_recipients()
         # TODO: sending email
         print("sending email to: %s" % ", ".join(recipients))
-        sent = True
-        self.date_sent = datetime.now()
+        sent = False
+        self.date_sent = now()
         self.save()
         return sent

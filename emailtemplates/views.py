@@ -1,11 +1,16 @@
 # coding=utf-8
+from __future__ import unicode_literals
+from django.urls import reverse
+
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template import Template, Context
 from django.views import View
+from django.utils.translation import gettext as _
 
-from emailtemplates.models import EmailTemplate
+from emailtemplates.models import EmailTemplate, MassEmailMessage
 from emailtemplates.registry import email_templates
 
 
@@ -28,3 +33,23 @@ class EmailPreviewView(View):
 
 
 email_preview_view = staff_member_required(EmailPreviewView.as_view())
+
+
+class SendMassEmailView(View):
+
+    def get_mass_email_message(self):
+        return get_object_or_404(MassEmailMessage, pk=self.kwargs['pk'])
+
+    def get(self, request, *args, **kwargs):
+        mass_email_message = self.get_mass_email_message()
+        sent = mass_email_message.send()
+        if sent:
+            messages.success(request,_("Mass email sent successfully"))
+        else:
+            messages.warning(request,_("Error occurred when trying to send mass email message."))
+        return HttpResponseRedirect(
+            reverse('admin:emailtemplates_massemailmessage_change', args=(mass_email_message.pk,)),
+        )
+
+
+send_mass_email_view = SendMassEmailView.as_view()
