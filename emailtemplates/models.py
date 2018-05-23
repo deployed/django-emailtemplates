@@ -72,9 +72,10 @@ class MassEmailMessage(models.Model):
             name="emailtemplates/mass_email.html", subject=self.subject,
             template_object=self, registry_validation=False,
         )
+        attachment_paths = [attachment.attachment_file.path for attachment in self.attachments.all()]
         sent_count = 0
         for recipient in recipients:
-            sent = eft.send(to=[recipient])
+            sent = eft.send(to=[recipient], attachment_paths=attachment_paths)
             logger.info("")
             if sent:
                 sent_count += 1
@@ -88,4 +89,4 @@ class MassEmailMessage(models.Model):
 
 class MassEmailAttachment(models.Model):
     attachment_file = models.FileField(_(u"Attachment file"))
-    mass_email_message = models.ForeignKey(MassEmailMessage, on_delete=models.CASCADE)
+    mass_email_message = models.ForeignKey(MassEmailMessage, related_name="attachments", on_delete=models.CASCADE)
