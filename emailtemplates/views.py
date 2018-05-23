@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
 from django.template import Template, Context
 from django.views import View
 from django.utils.translation import gettext as _
@@ -40,16 +40,23 @@ class SendMassEmailView(View):
     def get_mass_email_message(self):
         return get_object_or_404(MassEmailMessage, pk=self.kwargs['pk'])
 
+    def redirect_back(self):
+        return HttpResponseRedirect(
+            reverse('admin:emailtemplates_massemailmessage_change', args=(self.get_mass_email_message().pk,)),
+        )
+
     def get(self, request, *args, **kwargs):
         mass_email_message = self.get_mass_email_message()
+        if mass_email_message.sent:
+            messages.success(request, _("Mass email was already sent. "
+                                        "Create new mail message or force sending from shell."))
+            return self.redirect_back()
         sent = mass_email_message.send()
         if sent:
-            messages.success(request,_("Mass email sent successfully"))
+            messages.success(request, _("Mass email sent successfully"))
         else:
-            messages.warning(request,_("Error occurred when trying to send mass email message."))
-        return HttpResponseRedirect(
-            reverse('admin:emailtemplates_massemailmessage_change', args=(mass_email_message.pk,)),
-        )
+            messages.warning(request, _("Error occurred when trying to send mass email message."))
+        return self.redirect_back()
 
 
 send_mass_email_view = SendMassEmailView.as_view()
