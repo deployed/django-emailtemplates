@@ -6,7 +6,7 @@ from django.db import models
 from django.template import Engine
 from django.utils.translation import ugettext_lazy as _
 
-from emailtemplates.helpers import TemplateSourceLoader
+from emailtemplates.helpers import TemplateSourceLoader, mass_mailing_recipients
 
 try:
     from django.utils.timezone import now
@@ -31,7 +31,7 @@ class EmailTemplate(models.Model):
     modified = models.DateTimeField(default=now)
 
     class Meta:
-        unique_together = (('title', 'language'),)
+        unique_together = ((u'title', u'language'),)
 
     def __unicode__(self):
         return u'%s -> %s' % (self.title, self.language)
@@ -49,3 +49,26 @@ class EmailTemplate(models.Model):
         if not self.content:
             self.content = self.get_default_content()
         super(EmailTemplate, self).save(*args, **kwargs)
+
+
+class MassEmailMessage(models.Model):
+    subject = models.CharField(_(u'subject'), max_length=255)
+    content = models.TextField(_(u'content'))
+    date_sent = models.DateTimeField(_(u'sent'), null=True, blank=True)
+
+    def sent(self):
+        return bool(self.date_sent)
+
+    def get_recipients(self):
+        # TODO: recipients from settings callback if available
+        recipients = mass_mailing_recipients()
+        return recipients
+
+    def send(self, recipients=None):
+        recipients = recipients or self.get_recipients()
+        # TODO: sending email
+        print("sending email to: %s" % ", ".join(recipients))
+        sent = True
+        self.date_sent = datetime.now()
+        self.save()
+        return sent

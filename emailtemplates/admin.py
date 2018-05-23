@@ -4,7 +4,7 @@ from django.urls import reverse
 from django.utils.translation import ugettext_lazy as _
 
 from .forms import EmailTemplateAdminForm
-from .models import EmailTemplate
+from .models import EmailTemplate, MassEmailMessage
 
 
 class EmailTemplateAdmin(admin.ModelAdmin):
@@ -32,3 +32,22 @@ class EmailTemplateAdmin(admin.ModelAdmin):
 
 
 admin.site.register(EmailTemplate, EmailTemplateAdmin)
+
+
+class MassEmailMessageAdmin(admin.ModelAdmin):
+    list_display = ('subject', 'date_sent')
+    readonly_fields = ['date_sent']
+    
+
+    def show_links(self, obj):
+        if not obj.pk:
+            return ''
+        return u'<a href="%s" target="_blank">%s</a>' % (
+            reverse('email_preview', kwargs={'pk': obj.pk}), _('Show email preview')
+        )
+
+    show_links.allow_tags = True
+    show_links.short_description = _('Actions')
+
+
+admin.site.register(MassEmailMessage, MassEmailMessageAdmin)

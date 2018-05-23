@@ -2,6 +2,7 @@
 from string import lower
 
 from django.template.loaders import app_directories
+from django.contrib.auth import get_user_model
 
 
 class SubstringMatcher(object):
@@ -39,3 +40,18 @@ class TemplateSourceLoader(app_directories.Loader):
     def get_source(self, template_name):
         source, origin = self.load_template_source(template_name)
         return source
+
+
+def mass_mailing_recipients():
+    """
+    Returns iterable of all mass email recipients.
+    Default behavior will be to return list of all active users' emails.
+    This can be changed by providing callback in settings return some other list of users,
+    when user emails are stored in many, non default models.
+
+    :rtype iterable
+    """
+    User = get_user_model()
+    if hasattr(User, 'is_active') and hasattr(User, 'email'):
+        return User.objects.filter(is_active=True).values_list('email', flat=True).distinct()
+    return []
