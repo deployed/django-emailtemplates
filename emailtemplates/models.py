@@ -56,6 +56,9 @@ class MassEmailMessage(models.Model):
     content = models.TextField(_(u'content'))
     date_sent = models.DateTimeField(_(u'sent'), null=True, blank=True)
 
+    def __unicode__(self):
+        return self.subject
+
     @property
     def sent(self):
         return bool(self.date_sent)
@@ -81,3 +84,8 @@ class MassEmailMessage(models.Model):
         self.date_sent = now()
         self.save()
         return sent_count == len(recipients)
+
+
+class MassEmailAttachment(models.Model):
+    attachment_file = models.FileField(_(u"Attachment file"))
+    mass_email_message = models.ForeignKey(MassEmailMessage, on_delete=models.CASCADE)

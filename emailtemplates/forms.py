@@ -8,7 +8,7 @@ from django.template import TemplateSyntaxError
 from django.utils.safestring import mark_safe
 from django.utils.functional import lazy
 
-from emailtemplates.models import EmailTemplate
+from emailtemplates.models import EmailTemplate, MassEmailAttachment, MassEmailMessage
 from emailtemplates.registry import email_templates
 
 logger = logging.getLogger(__name__)
@@ -45,3 +45,19 @@ class EmailTemplateAdminForm(forms.ModelForm):
         except TemplateSyntaxError as e:
             raise ValidationError(u"Syntax error in custom email template: %s" % e)
         return content
+
+
+class MassEmailAttachmentForm(forms.ModelForm):
+    class Meta:
+        model = MassEmailAttachment
+        fields = ['attachment_file']
+
+
+class MassEmailMessageForm(forms.ModelForm):
+    class Meta:
+        model = MassEmailMessage
+        fields = [
+            'subject',
+            'content',
+            'date_sent',
+        ]
