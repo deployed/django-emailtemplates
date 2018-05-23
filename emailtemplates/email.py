@@ -26,14 +26,9 @@ class EmailFromTemplate(object):
     Site Admins should know given template context.
     Site Admins should be familiar with Django Template System.
     """
-    def __init__(self,
-                 name="",
-                 from_email=settings.DEFAULT_FROM_EMAIL,
-                 language=settings.LANGUAGE_CODE,
-                 subject="",
-                 template_class=EmailTemplate,
-                 registry_validation=True,
-    ):
+    def __init__(self, name="", from_email=settings.DEFAULT_FROM_EMAIL,
+                 language=settings.LANGUAGE_CODE, subject="", template_class=EmailTemplate,
+                 registry_validation=True, template_object=None):
         """
         Class constructor
 
@@ -50,6 +45,7 @@ class EmailFromTemplate(object):
             email_templates.get_registration(name)
         self.from_email = from_email
         self.template_class = template_class
+        self.template_object = template_object
         self.subject = subject
         self.language = language
         self.name = name
@@ -82,12 +78,16 @@ class EmailFromTemplate(object):
             logger.warning("Can't find %s template in the filesystem, will use very default one." % path)
         else:
             self._template_source = 'filesystem'
+            
+    def get_template_object(self):
+        if self.template_object:
+            return self.template_object
+        return self.template_class.objects.get(title=self.name, language=self.language)
 
     def get_object(self):
-        language = self.language
         while True:
             try:
-                tmp = self.template_class.objects.get(title=self.name, language=language)
+                tmp = self.get_template_object()
             except ObjectDoesNotExist:
                 logger.warning("Can't find EmailTemplate object in database, using default file template.")
                 break

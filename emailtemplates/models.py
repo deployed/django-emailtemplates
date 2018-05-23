@@ -56,15 +56,28 @@ class MassEmailMessage(models.Model):
     content = models.TextField(_(u'content'))
     date_sent = models.DateTimeField(_(u'sent'), null=True, blank=True)
 
+    @property
     def sent(self):
         return bool(self.date_sent)
 
     def send(self, recipients=None, force=False):
+        from emailtemplates.email import EmailFromTemplate
         recipients = recipients or mass_mailing_recipients()
-        # TODO: sending email
         if self.sent and not force:
             return False
-        print("sending email to: %s" % ", ".join(recipients))
+        eft = EmailFromTemplate(
+            name="emailtemplates/mass_email.html", subject=self.subject,
+            template_object=self, registry_validation=False,
+        )
+        sent_count = 0
+        for recipient in recipients:
+            sent = eft.send(to=[recipient])
+            logger.info("")
+            if sent:
+                sent_count += 1
+                logger.info(u"Successfully sent mass email message to user %s" % recipient)
+            else:
+                logger.warning(u"Error sending mass email message to user %s" % recipient)
         self.date_sent = now()
         self.save()
-        return True
+        return sent_count == len(recipients)
