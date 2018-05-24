@@ -64,5 +64,6 @@ def mass_mailing_recipients():
         return func()
     User = get_user_model()
     if hasattr(User, 'is_active') and hasattr(User, 'email'):
-        return User.objects.filter(is_active=True).values_list('email', flat=True).distinct()
+        filtered_users = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email__exact='')
+        return filtered_users.values_list('email', flat=True).distinct()
     return []
