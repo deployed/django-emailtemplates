@@ -16,6 +16,15 @@ Assumptions
 Changelog
 =========
 
+1.1.0
+-----
+
+* Basic mass mailing feature. Just go to admin, create new MassEmailMessage object and fill its subject, HTML content and attachments.
+Click admin button to send it or use Django shell. Emails are be default sent to all active users of user model (it must have is_active and email fields).
+In case of many application users sending emails using admin button may require to implement sending from queue rather than synchronously.
+You can create custom recipients function returning list and specify reference to it in MASS_EMAIL_RECIPIENTS setting.
+* `EmailFromTemplate.send()` now receives `attachments_paths` parameter of paths that can be used by `EmailMessage.attach_file()` django core method.
+
 1.0.4
 -----
 
