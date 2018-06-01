@@ -26,14 +26,9 @@ class EmailFromTemplate(object):
     Site Admins should know given template context.
     Site Admins should be familiar with Django Template System.
     """
-    def __init__(self,
-                 name="",
-                 from_email=settings.DEFAULT_FROM_EMAIL,
-                 language=settings.LANGUAGE_CODE,
-                 subject="",
-                 template_class=EmailTemplate,
-                 registry_validation=True,
-    ):
+    def __init__(self, name="", from_email=settings.DEFAULT_FROM_EMAIL,
+                 language=settings.LANGUAGE_CODE, subject="", template_class=EmailTemplate,
+                 registry_validation=True, template_object=None):
         """
         Class constructor
 
@@ -50,6 +45,7 @@ class EmailFromTemplate(object):
             email_templates.get_registration(name)
         self.from_email = from_email
         self.template_class = template_class
+        self.template_object = template_object
         self.subject = subject
         self.language = language
         self.name = name
@@ -82,12 +78,16 @@ class EmailFromTemplate(object):
             logger.warning("Can't find %s template in the filesystem, will use very default one." % path)
         else:
             self._template_source = 'filesystem'
+            
+    def get_template_object(self):
+        if self.template_object:
+            return self.template_object
+        return self.template_class.objects.get(title=self.name, language=self.language)
 
     def get_object(self):
-        language = self.language
         while True:
             try:
-                tmp = self.template_class.objects.get(title=self.name, language=language)
+                tmp = self.get_template_object()
             except ObjectDoesNotExist:
                 logger.warning("Can't find EmailTemplate object in database, using default file template.")
                 break
@@ -116,17 +116,25 @@ class EmailFromTemplate(object):
             # NOTE: for template from string Context() is still required!
             message = self.compiled_template.render(Context(self.context))
         self.message = message
+        
+    def get_message_object(self, send_to, attachment_paths, *args, **kwargs):
+        msg = EmailMessage(self.subject, self.message, self.from_email, send_to, *args, **kwargs)
+        if attachment_paths:
+            for path in attachment_paths:
+                msg.attach_file(path)
+        return msg
 
-    def send_email(self, send_to, *args, **kwargs):
+    def send_email(self, send_to, attachment_paths=None, *args, **kwargs):
         """
         Sends email to recipient based on self object parameters.
 
         @param send_to: recipient email
         @param args: additional args passed to EmailMessage
         @param kwargs: kwargs passed to EmailMessage
+        @param attachment_paths: paths to attachments as received by django EmailMessage.attach_file(path) method 
         @return: number of sent messages
         """
-        msg = EmailMessage(self.subject, self.message, self.from_email, send_to, *args, **kwargs)
+        msg = self.get_message_object(send_to, attachment_paths, *args, **kwargs)
         msg.content_subtype = self.content_subtype
 
         try:
@@ -136,7 +144,7 @@ class EmailFromTemplate(object):
 
         return self.sent
 
-    def send(self, to, *args, **kwargs):
+    def send(self, to, attachment_paths=None, *args, **kwargs):
         """This function does all the operations on eft object, that are necessary to send email.
            Usually one would use eft object like this:
                 eft = EmailFromTemplate(name='sth/sth.html')
@@ -147,6 +155,6 @@ class EmailFromTemplate(object):
         """
         self.get_object()
         self.render_message()
-        self.send_email(to, *args, **kwargs)
+        self.send_email(to, attachment_paths, *args, **kwargs)
         logger.info(u"Mail has been sent to: %s " % to)
         return self.sent
