@@ -140,7 +140,7 @@ class EmailFromTemplate(object):
 
         try:
             self.sent = msg.send()
-        except SMTPException, e:
+        except SMTPException as e:
             if not fail_silently:
                 raise
             logger.error(u'Problem sending email to %s: %s', send_to, e)
