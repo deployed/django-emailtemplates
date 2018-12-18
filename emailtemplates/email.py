@@ -75,10 +75,10 @@ class EmailFromTemplate(object):
         try:
             self.compiled_template = get_template(path)
         except (TemplateDoesNotExist, IOError):
-            logger.warning("Can't find %s template in the filesystem, will use very default one." % path)
+            logger.warning("Can't find %s template in the filesystem, will use very default one.", path)
         else:
             self._template_source = 'filesystem'
-            
+
     def get_template_object(self):
         if self.template_object:
             return self.template_object
@@ -99,7 +99,7 @@ class EmailFromTemplate(object):
                 self.template = unicode(tmp.content)
                 self.subject = unicode(tmp.subject) or self.subject
                 self._template_source = 'database'
-                logger.debug(u"Got template %s from database" % self.name)
+                logger.debug(u"Got template %s from database", self.name)
                 return
         # fallback
         self.__get_template_from_file()
@@ -116,7 +116,7 @@ class EmailFromTemplate(object):
             # NOTE: for template from string Context() is still required!
             message = self.compiled_template.render(Context(self.context))
         self.message = message
-        
+
     def get_message_object(self, send_to, attachment_paths, *args, **kwargs):
         msg = EmailMessage(self.subject, self.message, self.from_email, send_to, *args, **kwargs)
         if attachment_paths:
@@ -140,7 +140,7 @@ class EmailFromTemplate(object):
         try:
             self.sent = msg.send()
         except SMTPException, e:
-            logger.error(u'Problem sending email to %s: %s' % (send_to, e))
+            logger.error(u'Problem sending email to %s: %s', send_to, e)
 
         return self.sent
 
@@ -156,5 +156,6 @@ class EmailFromTemplate(object):
         self.get_object()
         self.render_message()
         self.send_email(to, attachment_paths, *args, **kwargs)
-        logger.info(u"Mail has been sent to: %s " % to)
+        if self.sent:
+            logger.info(u"Mail has been sent to: %s ", to)
         return self.sent

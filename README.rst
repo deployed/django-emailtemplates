@@ -16,6 +16,13 @@ Assumptions
 Changelog
 =========
 
+1.1.1
+-----
+
+* Fix confusing logger stating that email was sent even though an error had occured
+* cosmetic changes - logging messages possible to be aggregated by tools like sentry
+
+
 1.1.0
 -----
 

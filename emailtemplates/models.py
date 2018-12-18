@@ -78,9 +78,9 @@ class MassEmailMessage(models.Model):
             sent = eft.send(to=[recipient], attachment_paths=attachment_paths)
             if sent:
                 sent_count += 1
-                logger.info(u"Successfully sent mass email message to user %s" % recipient)
+                logger.info(u"Successfully sent mass email message to user %s", recipient)
             else:
-                logger.warning(u"Error sending mass email message to user %s" % recipient)
+                logger.warning(u"Error sending mass email message to user %s", recipient)
         self.date_sent = now()
         self.save()
         return sent_count == len(recipients)
