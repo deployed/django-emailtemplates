@@ -16,6 +16,12 @@ Assumptions
 Changelog
 =========
 
+1.1.2
+-----
+
+* EmailFromTemplate.send_email - added new param: fail_silently
+  - When it’s False, msg.send() will raise an smtplib.SMTPException if an error occurs.
+
 1.1.1
 -----
 

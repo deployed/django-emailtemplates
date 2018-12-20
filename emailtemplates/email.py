@@ -124,10 +124,11 @@ class EmailFromTemplate(object):
                 msg.attach_file(path)
         return msg
 
-    def send_email(self, send_to, attachment_paths=None, *args, **kwargs):
+    def send_email(self, send_to, attachment_paths=None, fail_silently=True, *args, **kwargs):
         """
         Sends email to recipient based on self object parameters.
 
+        @param fail_silently: When it’s False, msg.send() will raise an smtplib.SMTPException if an error occurs.
         @param send_to: recipient email
         @param args: additional args passed to EmailMessage
         @param kwargs: kwargs passed to EmailMessage
@@ -140,6 +141,8 @@ class EmailFromTemplate(object):
         try:
             self.sent = msg.send()
         except SMTPException, e:
+            if not fail_silently:
+                raise
             logger.error(u'Problem sending email to %s: %s', send_to, e)
 
         return self.sent
