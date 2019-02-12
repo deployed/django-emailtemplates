@@ -1,6 +1,7 @@
 # coding=utf-8
 import os
 import logging
+import six
 from smtplib import SMTPException
 
 from django.conf import settings
@@ -96,8 +97,8 @@ class EmailFromTemplate(object):
                     "Can't convert to unicode EmailTemplate object from database, using default file template.")
                 break
             else:
-                self.template = unicode(tmp.content)
-                self.subject = unicode(tmp.subject) or self.subject
+                self.template = str(tmp.content)
+                self.subject = str(tmp.subject) or self.subject
                 self._template_source = 'database'
                 logger.debug(u"Got template %s from database", self.name)
                 return
