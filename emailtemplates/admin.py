@@ -1,6 +1,7 @@
 # coding=utf-8
 from django.contrib import admin
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 
 from .forms import EmailTemplateAdminForm, MassEmailMessageForm, MassEmailAttachmentForm
@@ -23,9 +24,9 @@ class EmailTemplateAdmin(admin.ModelAdmin):
     def show_links(self, obj):
         if not obj.pk:
             return ''
-        return u'<a href="%s" target="_blank">%s</a>' % (
+        return mark_safe(u'<a href="%s" target="_blank">%s</a>' % (
             reverse('email_preview', kwargs={'pk': obj.pk}), _('Show email preview')
-        )
+        ))
 
     show_links.allow_tags = True
     show_links.short_description = _('Actions')
