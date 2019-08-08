@@ -4,7 +4,7 @@ import os
 
 from django.conf import settings
 from django.core import mail
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils.html import escape
 from mock import Mock
 
@@ -16,7 +16,10 @@ from ..registry import email_templates, NotRegistered, EmailTemplateRegistry
 
 
 class CheckEmail(TestCase):
-    def check_email_was_sent(self, eft, to):
+    def check_email_was_sent(self, eft, to, reply_to=None):
+        if reply_to is None:
+            reply_to = []
+
         self.assertTrue(len(mail.outbox) > 0)
         msg = mail.outbox[0]
         self.assertTrue(settings.DEFAULT_FROM_EMAIL in msg.from_email)
@@ -25,6 +28,7 @@ class CheckEmail(TestCase):
         self.assertEqual(msg.body, eft.message)
         self.assertTrue('Message-Id' in msg.message())
         self.assertEqual(msg.to, to)
+        self.assertEqual(msg.reply_to, reply_to)
 
 
 class EmailFromTemplateTest(CheckEmail):
@@ -34,7 +38,17 @@ class EmailFromTemplateTest(CheckEmail):
         email_logger.warning = Mock()
         self.attachment_filepath = os.path.join(os.path.dirname(__file__), 'data', 'example_file.txt')
 
+    @override_settings(DEFAULT_REPLY_TO_EMAIL='hello@hello.pl')
     def test_empty_object(self):
+        eft = EmailFromTemplate(registry_validation=False)
+        self.assertTrue(isinstance(eft, object))
+        eft.render_message()
+        to = ['to@example.com']
+        eft.send_email(to)
+        self.check_email_was_sent(eft, to, reply_to=['hello@hello.pl'])
+
+    @override_settings(DEFAULT_REPLY_TO_EMAIL=None)
+    def test_empty_object_with_empty_reply_to(self):
         eft = EmailFromTemplate(registry_validation=False)
         self.assertTrue(isinstance(eft, object))
         eft.render_message()
@@ -84,9 +98,10 @@ class EmailFromTemplateWithFixturesTest(CheckEmail):
         email_logger.debug = Mock()
 
     def test_support_database_template(self):
-        eft = EmailFromTemplate(name='support_respond.html', language=self.language, registry_validation=False)
+        template_name = 'support_respond.html'
+        eft = EmailFromTemplate(name=template_name, language=self.language, registry_validation=False)
         eft.get_object()
-        email_logger.debug.assert_called_with(substr("Got template"))
+        email_logger.debug.assert_called_with('Got template %s from database', template_name)
         self.assertEqual(eft.template_source, 'database')
         eft.render_message()
         to = ['tester1@example.com', 'tester2@example.com']

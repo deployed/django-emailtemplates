@@ -41,7 +41,7 @@ class RegistrationItemTest(TestCase):
     def test_as_form_help_text(self):
         item = RegistrationItem('hello_template.html', help_text=u'Hello template',
                                 help_context={'username': u'Name of user in hello expression'})
-        self.assertEqual(unicode, type(item.as_form_help_text()))
+        self.assertEqual(str, type(item.as_form_help_text()))
         self.assertIn("USAGE", item.as_form_help_text())
         self.assertIn("CONTEXT", item.as_form_help_text())
 
@@ -52,7 +52,7 @@ class RegistrationItemTest(TestCase):
 
     def test_safe_defaults(self):
         item = RegistrationItem('hello_template.html')
-        self.assertEqual(unicode, type(item.help_text))
+        self.assertEqual(str, type(item.help_text))
         self.assertEqual(dict, type(item.help_context))
         self.assertEqual(tuple, type(item.as_form_choice()))
 
@@ -112,7 +112,7 @@ class EmailTemplateRegistryTest(TestCase):
         template_registry = EmailTemplateRegistry()
         template_registry.register('hello_template.html', help_text=u'Hello template',
                                    help_context={'username': u'Name of user in hello expression'})
-        items = template_registry.registration_items()
+        items = list(template_registry.registration_items())
         self.assertEqual(1, len(items))
         self.assertEqual('hello_template.html', items[0].path)
 

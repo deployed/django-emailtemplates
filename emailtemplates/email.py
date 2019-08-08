@@ -119,10 +119,10 @@ class EmailFromTemplate(object):
         self.message = message
 
     def get_message_object(self, send_to, attachment_paths, *args, **kwargs):
-        if kwargs.get('reply_to') is None:
-            defaut_reply_to_email = getattr(settings, 'DEFAULT_REPLY_TO_EMAIL', None)
-            if defaut_reply_to_email:
-                kwargs['reply_to'] = [defaut_reply_to_email]
+
+        reply_to = kwargs.get('reply_to', getattr(settings, 'DEFAULT_REPLY_TO_EMAIL', None))
+        if reply_to and type(reply_to) == str:
+            kwargs['reply_to'] = [reply_to]
 
         msg = EmailMessage(self.subject, self.message, self.from_email, send_to, *args, **kwargs)
         if attachment_paths:
