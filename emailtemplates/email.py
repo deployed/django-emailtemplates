@@ -13,7 +13,6 @@ from django.template.loader import get_template
 from .models import now, EmailTemplate
 from .registry import email_templates
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -27,6 +26,7 @@ class EmailFromTemplate(object):
     Site Admins should know given template context.
     Site Admins should be familiar with Django Template System.
     """
+
     def __init__(self, name="", from_email=settings.DEFAULT_FROM_EMAIL,
                  language=settings.LANGUAGE_CODE, subject="", template_class=EmailTemplate,
                  registry_validation=True, template_object=None):
@@ -119,6 +119,11 @@ class EmailFromTemplate(object):
         self.message = message
 
     def get_message_object(self, send_to, attachment_paths, *args, **kwargs):
+        if kwargs.get('reply_to') is None:
+            defaut_reply_to_email = getattr(settings, 'DEFAULT_REPLY_TO_EMAIL', None)
+            if defaut_reply_to_email:
+                kwargs['reply_to'] = [defaut_reply_to_email]
+
         msg = EmailMessage(self.subject, self.message, self.from_email, send_to, *args, **kwargs)
         if attachment_paths:
             for path in attachment_paths:

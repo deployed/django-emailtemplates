@@ -15,6 +15,9 @@ Assumptions
 
 Changelog
 =========
+1.1.3
+-----
+* Adding support for DEFAULT_REPLY_TO_EMAIL in django settings.
 
 1.1.2
 -----
