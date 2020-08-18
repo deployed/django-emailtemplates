@@ -1,6 +1,9 @@
 # coding=utf-8
 from importlib import import_module
-from string import lower
+try:
+    from string import lower
+except ImportError:
+    lower = str.lower
 
 from django.template.loaders import app_directories
 from django.contrib.auth import get_user_model
