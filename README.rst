@@ -15,6 +15,10 @@ Assumptions
 
 Changelog
 =========
+1.1.4
+-----
+* Add verbose name, replace __unicode__ into __str__
+
 1.1.3
 -----
 * Adding support for DEFAULT_REPLY_TO_EMAIL in django settings.
