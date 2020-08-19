@@ -31,10 +31,12 @@ class EmailTemplate(models.Model):
     modified = models.DateTimeField(default=now)
 
     class Meta:
-        unique_together = ((u'title', u'language'),)
+        unique_together = (('title', 'language'),)
+        verbose_name = _('Email template')
+        verbose_name_plural = _('Email templates')
 
-    def __unicode__(self):
-        return u'%s -> %s' % (self.title, self.language)
+    def __str__(self):
+        return '%s -> %s' % (self.title, self.language)
 
     def get_default_content(self):
         engine = Engine.get_default()
@@ -56,7 +58,11 @@ class MassEmailMessage(models.Model):
     content = models.TextField(_(u'content'))
     date_sent = models.DateTimeField(_(u'sent'), null=True, blank=True)
 
-    def __unicode__(self):
+    class Meta:
+        verbose_name = _('Mass email message')
+        verbose_name_plural = _('Mass email messages')
+
+    def __str__(self):
         return self.subject
 
     @property
