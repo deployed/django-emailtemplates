@@ -1,3 +1,5 @@
+default_app_config = 'emailtemplates.apps.EmailtempatesConfig'
+
 VERSION = (0, 8, 0)
 
 # Dynamically calculate the version based on VERSION tuple
