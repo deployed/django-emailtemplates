@@ -15,6 +15,10 @@ Assumptions
 
 Changelog
 =========
+1.1.5
+-----
+* Add default_app_config
+
 1.1.4
 -----
 * Add verbose name, replace __unicode__ into __str__
