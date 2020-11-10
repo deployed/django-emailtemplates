@@ -15,6 +15,11 @@ Assumptions
 
 Changelog
 =========
+1.1.6
+-----
+* Template loader fix
+* Added missing migration - fixed language choices
+
 1.1.5
 -----
 * Add default_app_config
