@@ -26,8 +26,8 @@ class EmailTemplate(models.Model):
     content = models.TextField(_(u'content'))
     language = models.CharField(_(u'language'), max_length=10, choices=settings.LANGUAGES,
                                 default=settings.LANGUAGE_CODE)
-    created = models.DateTimeField(default=now)
-    modified = models.DateTimeField(default=now)
+    created = models.DateTimeField(default=now, verbose_name=_("created"))
+    modified = models.DateTimeField(default=now, verbose_name=_("modified"))
 
     class Meta:
         unique_together = (('title', 'language'),)
