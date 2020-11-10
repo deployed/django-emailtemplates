@@ -4,10 +4,10 @@ from __future__ import unicode_literals
 
 from django.db import migrations, models
 import django.db.models.deletion
+from django.conf import settings
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('emailtemplates', '0003_auto_20180523_1027'),
     ]
@@ -18,13 +18,15 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('attachment_file', models.FileField(upload_to=b'', verbose_name='Attachment file')),
-                ('mass_email_message', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='emailtemplates.MassEmailMessage')),
+                ('mass_email_message',
+                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='emailtemplates.MassEmailMessage')),
             ],
         ),
         migrations.AlterField(
             model_name='emailtemplate',
             name='language',
-            field=models.CharField(choices=[(b'de', 'German'), (b'en', 'English')], default=b'de', max_length=10, verbose_name='language'),
+            field=models.CharField(choices=settings.LANGUAGES, default=settings.LANGUAGE_CODE, max_length=10,
+                                   verbose_name='language'),
         ),
         migrations.AlterField(
             model_name='emailtemplate',
