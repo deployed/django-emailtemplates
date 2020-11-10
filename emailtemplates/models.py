@@ -3,7 +3,6 @@ import logging
 
 from django.conf import settings
 from django.db import models
-from django.template import Engine
 from django.utils.translation import ugettext_lazy as _
 
 from emailtemplates.helpers import TemplateSourceLoader, mass_mailing_recipients
@@ -39,8 +38,7 @@ class EmailTemplate(models.Model):
         return '%s -> %s' % (self.title, self.language)
 
     def get_default_content(self):
-        engine = Engine.get_default()
-        loader = TemplateSourceLoader(engine)
+        loader = TemplateSourceLoader()
         try:
             return loader.get_source(self.title)
         except Exception as e:

@@ -1,5 +1,8 @@
 # coding=utf-8
 from importlib import import_module
+
+from django.template.loader import get_template
+
 try:
     from string import lower
 except ImportError:
@@ -41,10 +44,9 @@ class SubstringMatcher(object):
 substr = SubstringMatcher
 
 
-class TemplateSourceLoader(app_directories.Loader):
+class TemplateSourceLoader:
     def get_source(self, template_name):
-        source, origin = self.load_template_source(template_name)
-        return source
+        return get_template(template_name).template.source
 
 
 def mass_mailing_recipients():
