@@ -1,0 +1,132 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-11-13 12:08+0100\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n"
+"%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n"
+"%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
+
+#: emailtemplates/admin.py:34
+msgid "Show email preview"
+msgstr "Pokaż podgląd wiadomości"
+
+#: emailtemplates/admin.py:38
+msgid "Actions"
+msgstr "Akcje"
+
+#: emailtemplates/apps.py:8
+msgid "E-MAIL TEMPLATES"
+msgstr "Szblony wiadomości E-mail"
+
+#: emailtemplates/forms.py:19 emailtemplates/models.py:25
+msgid "template"
+msgstr "szablon"
+
+#: emailtemplates/models.py:26 emailtemplates/models.py:76
+msgid "subject"
+msgstr "tytuł"
+
+#: emailtemplates/models.py:27 emailtemplates/models.py:77
+msgid "content"
+msgstr "zawartość"
+
+#: emailtemplates/models.py:28
+msgid "language"
+msgstr "język"
+
+#: emailtemplates/models.py:30
+msgid "created"
+msgstr "utworzono"
+
+#: emailtemplates/models.py:31
+msgid "modified"
+msgstr "zmodyfikowano"
+
+#: emailtemplates/models.py:35
+msgid "Email template"
+msgstr "Szablon wiadomości"
+
+#: emailtemplates/models.py:36
+msgid "Email templates"
+msgstr "Szablony wiadomości"
+
+#: emailtemplates/models.py:56
+msgid "name"
+msgstr "nazwa"
+
+#: emailtemplates/models.py:57
+msgid "Attachment file"
+msgstr "Plik załącznika"
+
+#: emailtemplates/models.py:61
+msgid "Attachment"
+msgstr "Załącznik"
+
+#: emailtemplates/models.py:62
+msgid "Attachments"
+msgstr "Załączniki"
+
+#: emailtemplates/models.py:65
+#, python-format
+msgid "Attachment: %s"
+msgstr "Załącznik: %s"
+
+#: emailtemplates/models.py:72
+msgid "email template"
+msgstr "szablon email"
+
+#: emailtemplates/models.py:78
+msgid "sent"
+msgstr "wysłano"
+
+#: emailtemplates/models.py:81
+msgid "Mass email message"
+msgstr "Wiadomość grupowa"
+
+#: emailtemplates/models.py:82
+msgid "Mass email messages"
+msgstr "Wiadomości grupowe"
+
+#: emailtemplates/registry.py:68
+#, python-format
+msgid "<b>USAGE: %s</b>"
+msgstr "<b>UŻYCIE: %s</b>"
+
+#: emailtemplates/registry.py:69
+#, python-format
+msgid "<b>CONTEXT:</b><br/>%s"
+msgstr "<b>KONTEKST:</b><br/>%s"
+
+#: emailtemplates/templates/admin/emailtemplates/massemailmessage/change_form.html:5
+msgid "Send to all users"
+msgstr "Wyślij do wszystkich użytkowników"
+
+#: emailtemplates/views.py:51
+msgid ""
+"Mass email was already sent. Create new mail message or force sending from "
+"shell."
+msgstr ""
+"Wiadomość grupowa została już wysłana. Utwórz nową lub wymuś wysłanie z "
+"konsoli shell."
+
+#: emailtemplates/views.py:56
+msgid "Mass email sent successfully"
+msgstr "Wiadomość grupowa wysłana pomyślnie"
+
+#: emailtemplates/views.py:58
+msgid "Error occurred when trying to send mass email message."
+msgstr "Wystąpił błąd podczas próby wysłania wiadomości grupowej."

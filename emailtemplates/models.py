@@ -1,5 +1,6 @@
 # coding=utf-8
 import logging
+import os
 
 from django.conf import settings
 from django.db import models
@@ -26,6 +27,7 @@ class EmailTemplate(models.Model):
     content = models.TextField(_(u'content'))
     language = models.CharField(_(u'language'), max_length=10, choices=settings.LANGUAGES,
                                 default=settings.LANGUAGE_CODE)
+    attachments = models.ManyToManyField("EmailAttachment", blank=True, verbose_name=_("attachments"))
     created = models.DateTimeField(default=now, verbose_name=_("created"))
     modified = models.DateTimeField(default=now, verbose_name=_("modified"))
 
@@ -49,6 +51,28 @@ class EmailTemplate(models.Model):
         if not self.content:
             self.content = self.get_default_content()
         super(EmailTemplate, self).save(*args, **kwargs)
+
+
+class BaseEmailAttachment(models.Model):
+    name = models.CharField(_("name"), blank=True, max_length=50)
+    attachment_file = models.FileField(_(u"Attachment file"), upload_to="emails/attachments/")
+
+    class Meta:
+        abstract = True
+        verbose_name = _("Attachment")
+        verbose_name_plural = _("Attachments")
+
+    def __str__(self):
+        return _("Attachment: %s") % self.get_name()
+
+    def get_name(self):
+        return self.name or os.path.basename(self.attachment_file.name)
+
+
+class EmailAttachment(BaseEmailAttachment):
+    pass
+
+    # email_template = models.ForeignKey(EmailTemplate, verbose_name=_('email template'), on_delete=models.CASCADE)
 
 
 class MassEmailMessage(models.Model):
@@ -90,6 +114,5 @@ class MassEmailMessage(models.Model):
         return sent_count == len(recipients)
 
 
-class MassEmailAttachment(models.Model):
-    attachment_file = models.FileField(_(u"Attachment file"))
+class MassEmailAttachment(BaseEmailAttachment):
     mass_email_message = models.ForeignKey(MassEmailMessage, related_name="attachments", on_delete=models.CASCADE)
