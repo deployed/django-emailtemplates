@@ -5,7 +5,14 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 
 from .forms import EmailTemplateAdminForm, MassEmailMessageForm, MassEmailAttachmentForm
-from .models import EmailTemplate, MassEmailMessage, MassEmailAttachment
+from .models import EmailTemplate, MassEmailMessage, MassEmailAttachment, EmailAttachment
+
+
+class EmailTemplateAttachmentInline(admin.TabularInline):
+    model = EmailTemplate.attachments.through
+    extra = 1
+    verbose_name = _("Attachment")
+    verbose_name_plural = _("Attachments")
 
 
 class EmailTemplateAdmin(admin.ModelAdmin):
@@ -20,6 +27,7 @@ class EmailTemplateAdmin(admin.ModelAdmin):
     save_on_top = True
     save_as = True
     readonly_fields = ['show_links', 'created', 'modified']
+    inlines = [EmailTemplateAttachmentInline]
 
     def show_links(self, obj):
         if not obj.pk:
@@ -33,6 +41,14 @@ class EmailTemplateAdmin(admin.ModelAdmin):
 
 
 admin.site.register(EmailTemplate, EmailTemplateAdmin)
+
+
+class EmailAttachmentAdmin(admin.ModelAdmin):
+    list_display = ["name"]
+    search_fields = ["name"]
+
+
+admin.site.register(EmailAttachment, EmailAttachmentAdmin)
 
 
 class MassEmailAttachmentInline(admin.TabularInline):

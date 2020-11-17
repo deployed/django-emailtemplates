@@ -1,5 +1,7 @@
 # coding=utf-8
 import logging
+
+from django.template.loader import render_to_string
 from django.utils.translation import ugettext_lazy as _
 
 
@@ -48,7 +50,8 @@ class HelpContext(object):
 
 class RegistrationItem(object):
 
-    def __init__(self, path, help_text=u"", help_context=None):
+    def __init__(self, path, help_text=u"", help_context=None, name=""):
+        self.name = name or path
         self.path = path
         self.help_text = help_text
         self.help_context_obj = HelpContext(help_context)
@@ -70,7 +73,7 @@ class RegistrationItem(object):
         return u"<br/>".join((item_help_text, item_help_context))
 
     def as_form_choice(self):
-        return self.path, self.path
+        return self.path, self.name
 
     def get_help_content(self):
         return self.help_context_obj.get_help_values()
@@ -81,7 +84,7 @@ class EmailTemplateRegistry(object):
     def __init__(self):
         self._registry = {}
 
-    def register(self, path, help_text=None, help_context=None):
+    def register(self, path, name="", help_text=None, help_context=None):
         """
         Registers email template.
 
@@ -89,6 +92,7 @@ class EmailTemplateRegistry(object):
             email_templates.register('hello_template.html', help_text=u'Hello template',
                 help_context={'username': u'Name of user in hello expression'})
 
+        :param name: Template name [optional]
         :param path: Template file path. It will become immutable registry lookup key.
         :param help_text: Help text to describe template in admin site
         :param help_context: Dictionary of possible keys used in the context and description of their content
@@ -100,7 +104,7 @@ class EmailTemplateRegistry(object):
         """
         if path in self._registry:
             raise AlreadyRegistered('The template %s is already registered' % path)
-        self._registry[path] = RegistrationItem(path, help_text, help_context)
+        self._registry[path] = RegistrationItem(path, help_text, help_context, name=name)
         logger.debug("Registered email template %s", path)
 
     def is_registered(self, path):
@@ -115,6 +119,9 @@ class EmailTemplateRegistry(object):
         if not self.is_registered(path):
             raise NotRegistered("Email template not registered")
         return self._registry[path]
+
+    def get_name(self, path):
+        return self.get_registration(path).name
 
     def get_help_text(self, path):
         return self.get_registration(path).help_text
@@ -139,7 +146,9 @@ class EmailTemplateRegistry(object):
         Returns text that can be used as form help text for creating email templates.
         """
         try:
-            form_help_text = self.get_registration(path).as_form_help_text()
+            form_help_text = render_to_string("admin/emailtemplates/_helptext.html", context={
+                'registration_item': self.get_registration(path)
+            })
         except NotRegistered:
             form_help_text = u""
         return form_help_text

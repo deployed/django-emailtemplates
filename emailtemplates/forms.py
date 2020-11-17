@@ -5,8 +5,9 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.template import Template
 from django.template import TemplateSyntaxError
-from django.utils.safestring import mark_safe
 from django.utils.functional import lazy
+from django.utils.safestring import mark_safe
+from django.utils.translation import ugettext_lazy as _
 
 from emailtemplates.models import EmailTemplate, MassEmailAttachment, MassEmailMessage
 from emailtemplates.registry import email_templates
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class EmailTemplateAdminForm(forms.ModelForm):
-    title = forms.ChoiceField(choices=lazy(email_templates.email_template_choices, list))
+    title = forms.ChoiceField(choices=lazy(email_templates.email_template_choices, list), label=_("template"))
 
     class Meta:
         model = EmailTemplate
