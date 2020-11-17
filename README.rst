@@ -15,6 +15,12 @@ Assumptions
 
 Changelog
 =========
+
+1.1.7
+-----
+* added missing translations [pl]
+* added support for naming of the templates
+
 1.1.6
 -----
 * Template loader fix
