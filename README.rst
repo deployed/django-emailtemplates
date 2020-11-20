@@ -16,6 +16,10 @@ Assumptions
 Changelog
 =========
 
+1.1.8
+-----
+* send related attachments together with email templates
+
 1.1.7
 -----
 * added missing translations [pl]

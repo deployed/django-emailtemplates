@@ -1,7 +1,6 @@
 # coding=utf-8
-import os
 import logging
-import six
+import os
 from smtplib import SMTPException
 
 from django.conf import settings
@@ -109,13 +108,19 @@ class EmailFromTemplate(object):
         if not self.compiled_template:
             self.compiled_template = Template(self.template)
 
+    def get_context(self):
+        self.context.update({
+            "default_attachments": self.get_default_attachments(as_links=True)
+        })
+        return self.context
+
     def render_message(self):
         self.__compile_template()
         try:
-            message = self.compiled_template.render(self.context)  #
+            message = self.compiled_template.render(self.get_context())  #
         except AttributeError:
             # NOTE: for template from string Context() is still required!
-            message = self.compiled_template.render(Context(self.context))
+            message = self.compiled_template.render(Context(self.get_context()))
         self.message = message
 
     def get_message_object(self, send_to, attachment_paths, *args, **kwargs):
@@ -153,6 +158,25 @@ class EmailFromTemplate(object):
 
         return self.sent
 
+    def get_default_attachments(self, as_links=False):
+        """
+        Prepare default attachments data (files will be include into email as attachments)
+        """
+        attachments = []
+        try:
+            tmp = self.get_template_object()
+        except ObjectDoesNotExist:
+            return attachments
+
+        for attachment in tmp.attachments.filter(send_as_link=as_links):
+            if as_links:
+                attachments.append(attachment.attachment_file.url)
+            else:
+                attachments.append(
+                    (os.path.basename(attachment.attachment_file.name), attachment.attachment_file.read())
+                )
+        return attachments
+
     def send(self, to, attachment_paths=None, *args, **kwargs):
         """This function does all the operations on eft object, that are necessary to send email.
            Usually one would use eft object like this:
@@ -162,9 +186,12 @@ class EmailFromTemplate(object):
                 eft.send_email(['email@example.com'])
                 return eft.sent
         """
+        attachments = self.get_default_attachments(as_links=False)
+        attachments.extend(kwargs.get('attachments', []))
+
         self.get_object()
         self.render_message()
-        self.send_email(to, attachment_paths, *args, **kwargs)
+        self.send_email(to, attachment_paths, attachments=attachments, *args, **kwargs)
         if self.sent:
             logger.info(u"Mail has been sent to: %s ", to)
         return self.sent

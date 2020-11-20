@@ -56,6 +56,7 @@ class EmailTemplate(models.Model):
 class BaseEmailAttachment(models.Model):
     name = models.CharField(_("name"), blank=True, max_length=50)
     attachment_file = models.FileField(_(u"Attachment file"), upload_to="emails/attachments/")
+    send_as_link = models.BooleanField(verbose_name=_("Send as link"), default=True)
 
     class Meta:
         abstract = True

@@ -28,6 +28,9 @@ msgstr "Pokaż podgląd wiadomości"
 msgid "Actions"
 msgstr "Akcje"
 
+msgid "Send as link"
+msgstr "Wyślij jako link"
+
 #: emailtemplates/apps.py:8
 msgid "E-MAIL TEMPLATES"
 msgstr "Szblony wiadomości E-mail"
