@@ -16,6 +16,11 @@ Assumptions
 Changelog
 =========
 
+1.1.9
+-----
+* absolute url of the attached files
+* use attachment filename in the email context
+
 1.1.8
 -----
 * send related attachments together with email templates
