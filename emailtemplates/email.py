@@ -11,6 +11,8 @@ from django.template.loader import get_template
 
 from .models import now, EmailTemplate
 from .registry import email_templates
+import re
+from urllib.parse import urljoin
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +28,7 @@ class EmailFromTemplate(object):
     Site Admins should be familiar with Django Template System.
     """
 
-    def __init__(self, name="", from_email=settings.DEFAULT_FROM_EMAIL,
+    def __init__(self, name="", from_email=settings.DEFAULT_FROM_EMAIL, base_url="",
                  language=settings.LANGUAGE_CODE, subject="", template_class=EmailTemplate,
                  registry_validation=True, template_object=None):
         """
@@ -49,6 +51,7 @@ class EmailFromTemplate(object):
         self.subject = subject
         self.language = language
         self.name = name
+        self.base_url = base_url or getattr(settings, "BASE_URL", "")
 
         self.template = None
         self.compiled_template = None  # for storing compiled template
@@ -78,6 +81,15 @@ class EmailFromTemplate(object):
             logger.warning("Can't find %s template in the filesystem, will use very default one.", path)
         else:
             self._template_source = 'filesystem'
+
+    def build_absolute_uri(self, url: str):
+        """
+        Builds an absolute URI.
+        """
+        absolute_http_url_re = re.compile(r"^https?://", re.I)
+        if absolute_http_url_re.match(url):
+            return url
+        return urljoin(self.base_url, url)
 
     def get_template_object(self):
         if self.template_object:
@@ -170,7 +182,9 @@ class EmailFromTemplate(object):
 
         for attachment in tmp.attachments.filter(send_as_link=as_links):
             if as_links:
-                attachments.append(attachment.attachment_file.url)
+                attachments.append(
+                    (attachment.get_name(), self.build_absolute_uri(attachment.attachment_file.url))
+                )
             else:
                 attachments.append(
                     (os.path.basename(attachment.attachment_file.name), attachment.attachment_file.read())
