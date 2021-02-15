@@ -201,7 +201,7 @@ class EmailFromTemplate(object):
                 return eft.sent
         """
         attachments = self.get_default_attachments(as_links=False)
-        attachments.extend(kwargs.get('attachments', []))
+        attachments.extend(kwargs.pop('attachments', []))
 
         self.get_object()
         self.render_message()
