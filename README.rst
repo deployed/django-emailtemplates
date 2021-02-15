@@ -16,6 +16,10 @@ Assumptions
 Changelog
 =========
 
+1.1.10
+-------
+* Fixed problem with duplicated kwargs in send method
+
 1.1.9
 -----
 * absolute url of the attached files
