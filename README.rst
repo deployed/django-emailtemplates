@@ -16,6 +16,10 @@ Assumptions
 Changelog
 =========
 
+1.1.11
+-------
+* subject improvement - Now it is possible to use django templates as email subject
+
 1.1.10
 -------
 * Fixed problem with duplicated kwargs in send method
