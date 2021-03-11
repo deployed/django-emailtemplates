@@ -96,6 +96,11 @@ class EmailFromTemplate(object):
             return self.template_object
         return self.template_class.objects.get(title=self.name, language=self.language)
 
+    def get_subject(self, template):
+        subject_template = str(template.subject) or self.subject
+        subject = Template(subject_template).render(Context(self.get_context()))
+        return subject
+
     def get_object(self):
         while True:
             try:
@@ -109,7 +114,7 @@ class EmailFromTemplate(object):
                 break
             else:
                 self.template = str(tmp.content)
-                self.subject = str(tmp.subject) or self.subject
+                self.subject = self.get_subject(tmp)
                 self._template_source = 'database'
                 logger.debug(u"Got template %s from database", self.name)
                 return

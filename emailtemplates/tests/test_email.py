@@ -91,7 +91,7 @@ class EmailFromTemplateWithFixturesTest(CheckEmail):
         self.support_template = EmailTemplate.objects.create(
             language=self.language,
             title='support_respond.html',
-            subject="Test",
+            subject="Hi {{ user_name }}",
             content="Support: {{ user_name }}"
         )
         mail.outbox = []
@@ -100,6 +100,7 @@ class EmailFromTemplateWithFixturesTest(CheckEmail):
     def test_support_database_template(self):
         template_name = 'support_respond.html'
         eft = EmailFromTemplate(name=template_name, language=self.language, registry_validation=False)
+        eft.context = {"user_name": "Lucas"}
         eft.get_object()
         email_logger.debug.assert_called_with('Got template %s from database', template_name)
         self.assertEqual(eft.template_source, 'database')
@@ -113,12 +114,13 @@ class EmailFromTemplateWithFixturesTest(CheckEmail):
         self.support_template.save(update_fields=['subject'])
         eft = EmailFromTemplate(
             name='support_respond.html',
-            subject='default email title',
+            subject='default email title - hi {{ user_name }}',
             language=self.language,
             registry_validation=False
         )
+        eft.context = {"user_name": "Lucas"}
         eft.get_object()
-        self.assertEqual(eft.subject, 'default email title')
+        self.assertEqual(eft.subject, 'default email title - hi Lucas')
 
     def test_friends_invitation_no_database_or_filesystem_template(self):
         eft = EmailFromTemplate(registry_validation=False)
