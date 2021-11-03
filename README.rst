@@ -16,6 +16,10 @@ Assumptions
 Changelog
 =========
 
+1.1.12
+-------
+* 23614 german translations  - https://github.com/deployed/django-emailtemplates/pull/34
+
 1.1.11
 -------
 * subject improvement - Now it is possible to use django templates as email subject
