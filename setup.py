@@ -16,8 +16,9 @@ tests_require = [
 
 setup(
     name='django-emailtemplates',
-    version='1.1.11',
+    version='1.1.12',
     packages=find_packages(),
+    package_data={'emailtemplates': ['locale/*/LC_MESSAGES/*.po', 'locale/*/LC_MESSAGES/*.mo']},
     include_package_data=True,
     license='MIT License',
     description='A simple Django app to create emails based on database or filesystem templates.',
