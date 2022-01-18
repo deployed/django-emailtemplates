@@ -7,7 +7,7 @@ from django.template import Template
 from django.template import TemplateSyntaxError
 from django.utils.functional import lazy
 from django.utils.safestring import mark_safe
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 
 from emailtemplates.models import EmailTemplate, MassEmailAttachment, MassEmailMessage
 from emailtemplates.registry import email_templates
