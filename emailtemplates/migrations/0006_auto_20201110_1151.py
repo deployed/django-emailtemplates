@@ -7,18 +7,22 @@ import django.utils.timezone
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('emailtemplates', '0005_auto_20201110_1115'),
+        ("emailtemplates", "0005_auto_20201110_1115"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='emailtemplate',
-            name='created',
-            field=models.DateTimeField(default=django.utils.timezone.now, verbose_name='created'),
+            model_name="emailtemplate",
+            name="created",
+            field=models.DateTimeField(
+                default=django.utils.timezone.now, verbose_name="created"
+            ),
         ),
         migrations.AlterField(
-            model_name='emailtemplate',
-            name='modified',
-            field=models.DateTimeField(default=django.utils.timezone.now, verbose_name='modified'),
+            model_name="emailtemplate",
+            name="modified",
+            field=models.DateTimeField(
+                default=django.utils.timezone.now, verbose_name="modified"
+            ),
         ),
     ]

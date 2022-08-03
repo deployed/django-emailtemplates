@@ -16,6 +16,10 @@ Assumptions
 Changelog
 =========
 
+1.1.14
+------
+* Additional fields for email attachment - https://github.com/deployed/django-emailtemplates/pull/36
+
 1.1.13
 ------
 * Change default auto field to BigAutoField - https://github.com/deployed/django-emailtemplates/pull/35

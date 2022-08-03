@@ -6,40 +6,65 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('emailtemplates', '0006_auto_20201110_1151'),
+        ("emailtemplates", "0006_auto_20201110_1151"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='EmailAttachment',
+            name="EmailAttachment",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(blank=True, max_length=50, verbose_name='name')),
-                ('attachment_file', models.FileField(upload_to='emails/attachments/', verbose_name='Attachment file')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(blank=True, max_length=50, verbose_name="name"),
+                ),
+                (
+                    "attachment_file",
+                    models.FileField(
+                        upload_to="emails/attachments/", verbose_name="Attachment file"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Attachment',
-                'verbose_name_plural': 'Attachments',
-                'abstract': False,
+                "verbose_name": "Attachment",
+                "verbose_name_plural": "Attachments",
+                "abstract": False,
             },
         ),
         migrations.AlterModelOptions(
-            name='massemailattachment',
-            options={'verbose_name': 'Attachment', 'verbose_name_plural': 'Attachments'},
+            name="massemailattachment",
+            options={
+                "verbose_name": "Attachment",
+                "verbose_name_plural": "Attachments",
+            },
         ),
         migrations.AddField(
-            model_name='massemailattachment',
-            name='name',
-            field=models.CharField(blank=True, max_length=50, verbose_name='name'),
+            model_name="massemailattachment",
+            name="name",
+            field=models.CharField(blank=True, max_length=50, verbose_name="name"),
         ),
         migrations.AlterField(
-            model_name='massemailattachment',
-            name='attachment_file',
-            field=models.FileField(upload_to='emails/attachments/', verbose_name='Attachment file'),
+            model_name="massemailattachment",
+            name="attachment_file",
+            field=models.FileField(
+                upload_to="emails/attachments/", verbose_name="Attachment file"
+            ),
         ),
         migrations.AddField(
-            model_name='emailtemplate',
-            name='attachments',
-            field=models.ManyToManyField(blank=True, to='emailtemplates.EmailAttachment', verbose_name='attachments'),
+            model_name="emailtemplate",
+            name="attachments",
+            field=models.ManyToManyField(
+                blank=True,
+                to="emailtemplates.EmailAttachment",
+                verbose_name="attachments",
+            ),
         ),
     ]

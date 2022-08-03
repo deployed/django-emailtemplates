@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-13 12:08+0100\n"
+"POT-Creation-Date: 2022-08-03 14:35+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -20,96 +20,109 @@ msgstr ""
 "%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n"
 "%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
 
-#: emailtemplates/admin.py:34
+#: emailtemplates/admin.py:19 emailtemplates/models.py:77
+msgid "Attachment"
+msgstr "Załącznik"
+
+#: emailtemplates/admin.py:20 emailtemplates/models.py:78
+msgid "Attachments"
+msgstr "Załączniki"
+
+#: emailtemplates/admin.py:50
 msgid "Show email preview"
 msgstr "Pokaż podgląd wiadomości"
 
-#: emailtemplates/admin.py:38
+#: emailtemplates/admin.py:54
 msgid "Actions"
 msgstr "Akcje"
-
-msgid "Send as link"
-msgstr "Wyślij jako link"
 
 #: emailtemplates/apps.py:8
 msgid "E-MAIL TEMPLATES"
 msgstr "Szblony wiadomości E-mail"
 
-#: emailtemplates/forms.py:19 emailtemplates/models.py:25
+#: emailtemplates/forms.py:20 emailtemplates/models.py:26
 msgid "template"
 msgstr "szablon"
 
-#: emailtemplates/models.py:26 emailtemplates/models.py:76
+#: emailtemplates/models.py:27 emailtemplates/models.py:94
 msgid "subject"
 msgstr "tytuł"
 
-#: emailtemplates/models.py:27 emailtemplates/models.py:77
+#: emailtemplates/models.py:28 emailtemplates/models.py:95
 msgid "content"
 msgstr "zawartość"
 
-#: emailtemplates/models.py:28
+#: emailtemplates/models.py:30
 msgid "language"
 msgstr "język"
 
-#: emailtemplates/models.py:30
+#: emailtemplates/models.py:36
+msgid "attachments"
+msgstr "załączniki"
+
+#: emailtemplates/models.py:38
 msgid "created"
 msgstr "utworzono"
 
-#: emailtemplates/models.py:31
+#: emailtemplates/models.py:39
 msgid "modified"
 msgstr "zmodyfikowano"
 
-#: emailtemplates/models.py:35
+#: emailtemplates/models.py:43
 msgid "Email template"
 msgstr "Szablon wiadomości"
 
-#: emailtemplates/models.py:36
+#: emailtemplates/models.py:44
 msgid "Email templates"
 msgstr "Szablony wiadomości"
 
-#: emailtemplates/models.py:56
+#: emailtemplates/models.py:64
 msgid "name"
 msgstr "nazwa"
 
-#: emailtemplates/models.py:57
+#: emailtemplates/models.py:66
 msgid "Attachment file"
 msgstr "Plik załącznika"
 
-#: emailtemplates/models.py:61
-msgid "Attachment"
-msgstr "Załącznik"
+#: emailtemplates/models.py:68
+msgid "Send as link"
+msgstr "Wyślij jako link"
 
-#: emailtemplates/models.py:62
-msgid "Attachments"
-msgstr "Załączniki"
+#: emailtemplates/models.py:70
+msgid "Comment"
+msgstr "Komentarz"
 
-#: emailtemplates/models.py:65
+#: emailtemplates/models.py:70
+msgid "visible only in admin"
+msgstr "widoczne tylko w panelu administracyjnym"
+
+#: emailtemplates/models.py:72
+msgid "Ordering"
+msgstr "Kolejność"
+
+#: emailtemplates/models.py:81
 #, python-format
 msgid "Attachment: %s"
 msgstr "Załącznik: %s"
 
-#: emailtemplates/models.py:72
-msgid "email template"
-msgstr "szablon email"
-
-#: emailtemplates/models.py:78
+#: emailtemplates/models.py:96
 msgid "sent"
 msgstr "wysłano"
 
-#: emailtemplates/models.py:81
+#: emailtemplates/models.py:99
 msgid "Mass email message"
 msgstr "Wiadomość grupowa"
 
-#: emailtemplates/models.py:82
+#: emailtemplates/models.py:100
 msgid "Mass email messages"
 msgstr "Wiadomości grupowe"
 
-#: emailtemplates/registry.py:68
+#: emailtemplates/registry.py:81
 #, python-format
 msgid "<b>USAGE: %s</b>"
 msgstr "<b>UŻYCIE: %s</b>"
 
-#: emailtemplates/registry.py:69
+#: emailtemplates/registry.py:84
 #, python-format
 msgid "<b>CONTEXT:</b><br/>%s"
 msgstr "<b>KONTEKST:</b><br/>%s"
@@ -118,7 +131,7 @@ msgstr "<b>KONTEKST:</b><br/>%s"
 msgid "Send to all users"
 msgstr "Wyślij do wszystkich użytkowników"
 
-#: emailtemplates/views.py:51
+#: emailtemplates/views.py:55
 msgid ""
 "Mass email was already sent. Create new mail message or force sending from "
 "shell."
@@ -126,10 +139,13 @@ msgstr ""
 "Wiadomość grupowa została już wysłana. Utwórz nową lub wymuś wysłanie z "
 "konsoli shell."
 
-#: emailtemplates/views.py:56
+#: emailtemplates/views.py:62
 msgid "Mass email sent successfully"
 msgstr "Wiadomość grupowa wysłana pomyślnie"
 
-#: emailtemplates/views.py:58
+#: emailtemplates/views.py:65
 msgid "Error occurred when trying to send mass email message."
 msgstr "Wystąpił błąd podczas próby wysłania wiadomości grupowej."
+
+#~ msgid "email template"
+#~ msgstr "szablon email"

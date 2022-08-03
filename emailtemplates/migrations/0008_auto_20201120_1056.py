@@ -6,18 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('emailtemplates', '0007_auto_20201113_1354'),
+        ("emailtemplates", "0007_auto_20201113_1354"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='emailattachment',
-            name='send_as_link',
-            field=models.BooleanField(default=True, verbose_name='Send as link'),
+            model_name="emailattachment",
+            name="send_as_link",
+            field=models.BooleanField(default=True, verbose_name="Send as link"),
         ),
         migrations.AddField(
-            model_name='massemailattachment',
-            name='send_as_link',
-            field=models.BooleanField(default=True, verbose_name='Send as link'),
+            model_name="massemailattachment",
+            name="send_as_link",
+            field=models.BooleanField(default=True, verbose_name="Send as link"),
         ),
     ]
