@@ -1,5 +1,6 @@
 # coding=utf-8
 from django.test import TestCase
+from django.utils.translation import gettext as _
 
 from ..registry import EmailTemplateRegistry, RegistrationItem, HelpContext
 
@@ -56,8 +57,8 @@ class RegistrationItemTest(TestCase):
             help_context={"username": "Name of user in hello expression"},
         )
         self.assertEqual(str, type(item.as_form_help_text()))
-        self.assertIn("USAGE", item.as_form_help_text())
-        self.assertIn("CONTEXT", item.as_form_help_text())
+        self.assertIn(_("USAGE"), item.as_form_help_text())
+        self.assertIn(_("CONTEXT"), item.as_form_help_text())
 
     def test_as_form_choice(self):
         item = RegistrationItem(

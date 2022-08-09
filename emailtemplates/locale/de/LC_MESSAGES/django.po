@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-03 14:35+0200\n"
+"POT-Creation-Date: 2022-08-09 13:50+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -20,11 +20,11 @@ msgstr ""
 "%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n"
 "%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
 
-#: emailtemplates/admin.py:19 emailtemplates/models.py:77
+#: emailtemplates/admin.py:19 emailtemplates/models.py:83
 msgid "Attachment"
 msgstr "Anlage"
 
-#: emailtemplates/admin.py:20 emailtemplates/models.py:78
+#: emailtemplates/admin.py:20 emailtemplates/models.py:84
 msgid "Attachments"
 msgstr "Anhänge"
 
@@ -40,90 +40,94 @@ msgstr "Aktionen"
 msgid "E-MAIL TEMPLATES"
 msgstr "E-Mail Templates"
 
-#: emailtemplates/forms.py:20 emailtemplates/models.py:26
+#: emailtemplates/forms.py:20 emailtemplates/models.py:29
 msgid "template"
 msgstr "Vorlage"
 
-#: emailtemplates/models.py:27 emailtemplates/models.py:94
+#: emailtemplates/models.py:27 emailtemplates/models.py:68
+#: emailtemplates/models.py:101
+msgid "ID"
+msgstr ""
+
+#: emailtemplates/models.py:30 emailtemplates/models.py:103
 msgid "subject"
 msgstr "Thema"
 
-#: emailtemplates/models.py:28 emailtemplates/models.py:95
+#: emailtemplates/models.py:31 emailtemplates/models.py:104
 msgid "content"
 msgstr "Inhalt"
 
-#: emailtemplates/models.py:30
+#: emailtemplates/models.py:33
 msgid "language"
 msgstr "Sprache"
 
-#: emailtemplates/models.py:36
-#| msgid "Attachments"
+#: emailtemplates/models.py:39
 msgid "attachments"
 msgstr "anhänge"
 
-#: emailtemplates/models.py:38
+#: emailtemplates/models.py:41
 msgid "created"
 msgstr "erstellt"
 
-#: emailtemplates/models.py:39
+#: emailtemplates/models.py:42
 msgid "modified"
 msgstr "geändert"
 
-#: emailtemplates/models.py:43
+#: emailtemplates/models.py:46
 msgid "Email template"
 msgstr "E-Mail Template"
 
-#: emailtemplates/models.py:44
+#: emailtemplates/models.py:47
 msgid "Email templates"
 msgstr "E-Mail Templates"
 
-#: emailtemplates/models.py:64
+#: emailtemplates/models.py:70
 msgid "name"
 msgstr "Name"
 
-#: emailtemplates/models.py:66
+#: emailtemplates/models.py:72
 msgid "Attachment file"
 msgstr "Datei anhängen"
 
-#: emailtemplates/models.py:68
-msgid "Send as link"
-msgstr "Als Link versenden"
-
-#: emailtemplates/models.py:70
+#: emailtemplates/models.py:75
 msgid "Comment"
 msgstr "Kommentar"
 
-#: emailtemplates/models.py:70
+#: emailtemplates/models.py:75
 msgid "visible only in admin"
 msgstr "nur im Administrationsbereich sichtbar"
 
-#: emailtemplates/models.py:72
+#: emailtemplates/models.py:77
 msgid "Ordering"
 msgstr "Bestellung"
 
-#: emailtemplates/models.py:81
+#: emailtemplates/models.py:78
+msgid "Send as link"
+msgstr "Als Link versenden"
+
+#: emailtemplates/models.py:87
 #, python-format
 msgid "Attachment: %s"
 msgstr "Anlage: %s"
 
-#: emailtemplates/models.py:96
+#: emailtemplates/models.py:105
 msgid "sent"
 msgstr "gesendet"
 
-#: emailtemplates/models.py:99
+#: emailtemplates/models.py:108
 msgid "Mass email message"
 msgstr "Massen E-Mail"
 
-#: emailtemplates/models.py:100
+#: emailtemplates/models.py:109
 msgid "Mass email messages"
 msgstr "Massen E-Mails"
 
-#: emailtemplates/registry.py:81
+#: emailtemplates/registry.py:80
 #, python-format
 msgid "<b>USAGE: %s</b>"
 msgstr "<b>ANWENDUNG: %s</b>"
 
-#: emailtemplates/registry.py:84
+#: emailtemplates/registry.py:83
 #, python-format
 msgid "<b>CONTEXT:</b><br/>%s"
 msgstr "<b>KONTEXT:</b><br/>%s"
@@ -131,6 +135,14 @@ msgstr "<b>KONTEXT:</b><br/>%s"
 #: emailtemplates/templates/admin/emailtemplates/massemailmessage/change_form.html:5
 msgid "Send to all users"
 msgstr "An alle Benutzer senden"
+
+#: emailtemplates/tests/test_template_registry.py:60
+msgid "USAGE"
+msgstr "ANWENDUNG"
+
+#: emailtemplates/tests/test_template_registry.py:61
+msgid "CONTEXT"
+msgstr "KONTEXT"
 
 #: emailtemplates/views.py:55
 msgid ""

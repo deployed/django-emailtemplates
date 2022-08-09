@@ -1,6 +1,7 @@
 # coding=utf-8
 import os
 
+import mock
 from django.conf import settings
 from django.core import mail
 from django.test import TestCase, override_settings
@@ -9,8 +10,7 @@ from mock import Mock
 
 from ..email import EmailFromTemplate
 from ..email import logger as email_logger
-from ..helpers import substr
-from ..models import EmailTemplate
+from ..models import EmailTemplate, EmailAttachment
 from ..registry import email_templates, NotRegistered, EmailTemplateRegistry
 
 
@@ -34,7 +34,6 @@ class EmailFromTemplateTest(CheckEmail):
     def setUp(self):
         mail.outbox = []
         email_templates = EmailTemplateRegistry()
-        email_logger.warning = Mock()
         self.attachment_filepath = os.path.join(
             os.path.dirname(__file__), "data", "example_file.txt"
         )
@@ -57,19 +56,38 @@ class EmailFromTemplateTest(CheckEmail):
         eft.send_email(to)
         self.check_email_was_sent(eft, to)
 
-    def test_with_empty_db_object(self):
-        eft = EmailFromTemplate(registry_validation=False)
+    @mock.patch("emailtemplates.email.logger")
+    def test_with_empty_db_object(self, mock_logger):
+        eft = EmailFromTemplate(registry_validation=False, name="template.html")
         eft.get_object()
-        email_logger.warning.assert_has_calls(
-            substr("Can't find EmailTemplate object in database")
-        )
-        email_logger.warning.assert_has_calls(
-            substr("template in the filesystem, will use very default one")
+        mock_logger.warning.assert_called_with(
+            "Can't find %s template in the filesystem, will use very default one.",
+            "template.html",
         )
         eft.render_message()
         to = ["to@example.com"]
         eft.send_email(to)
         self.check_email_was_sent(eft, to)
+
+    def test_get_default_attachments_ordering(self):
+        email_template = EmailTemplate.objects.create(title="template.html")
+        attachment1 = EmailAttachment.objects.create(
+            name="file1",
+            attachment_file="test/file1.pdf",
+            ordering=10,
+            send_as_link=True,
+        )
+        attachment2 = EmailAttachment.objects.create(
+            name="file2",
+            attachment_file="test/file2.pdf",
+            ordering=1,
+            send_as_link=True,
+        )
+        email_template.attachments.add(attachment1, attachment2)
+        eft = EmailFromTemplate(registry_validation=False, name="template.html")
+        result = eft.get_default_attachments(as_links=True)
+        self.assertEqual(result[0][0], attachment2.name)
+        self.assertEqual(result[1][0], attachment1.name)
 
     def test_init_check_email_templates_registry(self):
         with self.assertRaises(NotRegistered):

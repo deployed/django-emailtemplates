@@ -1,8 +1,9 @@
 # encoding: utf-8
 from __future__ import unicode_literals
-import mock
+
 import os
 
+import mock
 from django.core import mail
 from django.core.files import File
 from django.test import TestCase
@@ -52,6 +53,7 @@ class MassEmailMessageTest(TestCase):
         self.attachment_filepath = os.path.join(
             os.path.dirname(__file__), "data", "example_file.txt"
         )
+        mail.outbox = []
 
     def test_send(self):
         recipients = ["person@example.com"]
