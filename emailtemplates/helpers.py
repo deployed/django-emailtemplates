@@ -36,7 +36,7 @@ class SubstringMatcher(object):
         return 'a string containing "%s"' % self.containing
 
     def __str__(self):
-        return unicode(self).encode('utf-8')
+        return unicode(self).encode("utf-8")
 
     __repr__ = __unicode__
 
@@ -60,15 +60,19 @@ def mass_mailing_recipients():
 
     :rtype iterable
     """
-    if hasattr(settings, 'MASS_EMAIL_RECIPIENTS'):
-        callback_name = settings.MASS_EMAIL_RECIPIENTS.split('.')
-        module_name = '.'.join(callback_name[:-1])
+    if hasattr(settings, "MASS_EMAIL_RECIPIENTS"):
+        callback_name = settings.MASS_EMAIL_RECIPIENTS.split(".")
+        module_name = ".".join(callback_name[:-1])
         func_name = callback_name[-1]
         module = import_module(module_name)
         func = getattr(module, func_name, lambda: [])
         return func()
     User = get_user_model()
-    if hasattr(User, 'is_active') and hasattr(User, 'email'):
-        filtered_users = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email__exact='')
-        return filtered_users.values_list('email', flat=True).distinct()
+    if hasattr(User, "is_active") and hasattr(User, "email"):
+        filtered_users = (
+            User.objects.filter(is_active=True)
+            .exclude(email__isnull=True)
+            .exclude(email__exact="")
+        )
+        return filtered_users.values_list("email", flat=True).distinct()
     return []

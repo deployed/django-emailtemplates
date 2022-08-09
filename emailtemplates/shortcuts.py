@@ -2,7 +2,7 @@
 from .email import EmailFromTemplate
 
 
-def send_email(name, ctx_dict, send_to=None, subject=u'Subject', **kwargs):
+def send_email(name, ctx_dict, send_to=None, subject="Subject", **kwargs):
     """
     Shortcut function for EmailFromTemplate class
 

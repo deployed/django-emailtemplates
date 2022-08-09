@@ -9,28 +9,48 @@ from django.conf import settings
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('emailtemplates', '0003_auto_20180523_1027'),
+        ("emailtemplates", "0003_auto_20180523_1027"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='MassEmailAttachment',
+            name="MassEmailAttachment",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('attachment_file', models.FileField(upload_to=b'', verbose_name='Attachment file')),
-                ('mass_email_message',
-                 models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='emailtemplates.MassEmailMessage')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "attachment_file",
+                    models.FileField(upload_to=b"", verbose_name="Attachment file"),
+                ),
+                (
+                    "mass_email_message",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="emailtemplates.MassEmailMessage",
+                    ),
+                ),
             ],
         ),
         migrations.AlterField(
-            model_name='emailtemplate',
-            name='language',
-            field=models.CharField(choices=settings.LANGUAGES, default=settings.LANGUAGE_CODE, max_length=10,
-                                   verbose_name='language'),
+            model_name="emailtemplate",
+            name="language",
+            field=models.CharField(
+                choices=settings.LANGUAGES,
+                default=settings.LANGUAGE_CODE,
+                max_length=10,
+                verbose_name="language",
+            ),
         ),
         migrations.AlterField(
-            model_name='emailtemplate',
-            name='title',
-            field=models.CharField(max_length=255, verbose_name='template'),
+            model_name="emailtemplate",
+            name="title",
+            field=models.CharField(max_length=255, verbose_name="template"),
         ),
     ]

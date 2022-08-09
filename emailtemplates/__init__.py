@@ -1,6 +1,6 @@
-default_app_config = 'emailtemplates.apps.EmailtempatesConfig'
+default_app_config = "emailtemplates.apps.EmailtempatesConfig"
 
-VERSION = (1, 1, 13)
+VERSION = (1, 1, 14)
 
 # Dynamically calculate the version based on VERSION tuple
 if len(VERSION) > 2 and VERSION[2] is not None:

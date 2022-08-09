@@ -4,7 +4,6 @@ import logging
 from django.template.loader import render_to_string
 from django.utils.translation import gettext_lazy as _
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -20,6 +19,7 @@ class HelpContext(object):
     """
     Provides helpers methods for displaying help context keys (descriptions) and values (examples).
     """
+
     def __init__(self, help_context):
         self.help_context = help_context or {}
 
@@ -44,13 +44,12 @@ class HelpContext(object):
             if isinstance(v, tuple) and len(v) == 2:
                 help_values[k] = v[1]
             else:
-                help_values[k] = u"<%s>" % k
+                help_values[k] = "<%s>" % k
         return help_values
 
 
 class RegistrationItem(object):
-
-    def __init__(self, path, help_text=u"", help_context=None, name=""):
+    def __init__(self, path, help_text="", help_context=None, name=""):
         self.name = name or path
         self.path = path
         self.help_text = help_text
@@ -61,16 +60,31 @@ class RegistrationItem(object):
         return self.help_context_obj.get_help_keys()
 
     def _context_key(self, key):
-        return u"<b>{{ %s }}</b>" % key
+        return "<b>{{ %s }}</b>" % key
 
     def context_description(self):
-        help_text_item = lambda k, v: u"%s - %s" % (self._context_key(k), v) if v else u"%s" % self._context_key(k)
-        return u"<br/>".join([help_text_item(k, v) for (k, v) in sorted(self.help_context_obj.get_help_keys().items())])
+        help_text_item = (
+            lambda k, v: "%s - %s" % (self._context_key(k), v)
+            if v
+            else "%s" % self._context_key(k)
+        )
+        return "<br/>".join(
+            [
+                help_text_item(k, v)
+                for (k, v) in sorted(self.help_context_obj.get_help_keys().items())
+            ]
+        )
 
     def as_form_help_text(self):
-        item_help_text = _(u"<b>USAGE: %s</b>") % self.help_text if self.help_text else u""
-        item_help_context = _(u"<b>CONTEXT:</b><br/>%s") % self.context_description() if self.help_context_obj.get_help_keys() else u""
-        return u"<br/>".join((item_help_text, item_help_context))
+        item_help_text = (
+            _("<b>USAGE: %s</b>") % self.help_text if self.help_text else ""
+        )
+        item_help_context = (
+            _("<b>CONTEXT:</b><br/>%s") % self.context_description()
+            if self.help_context_obj.get_help_keys()
+            else ""
+        )
+        return "<br/>".join((item_help_text, item_help_context))
 
     def as_form_choice(self):
         return self.path, self.name
@@ -80,7 +94,6 @@ class RegistrationItem(object):
 
 
 class EmailTemplateRegistry(object):
-
     def __init__(self):
         self._registry = {}
 
@@ -89,8 +102,8 @@ class EmailTemplateRegistry(object):
         Registers email template.
 
         Example usage:
-            email_templates.register('hello_template.html', help_text=u'Hello template',
-                help_context={'username': u'Name of user in hello expression'})
+            email_templates.register('hello_template.html', help_text='Hello template',
+                help_context={'username': 'Name of user in hello expression'})
 
         :param name: Template name [optional]
         :param path: Template file path. It will become immutable registry lookup key.
@@ -103,8 +116,10 @@ class EmailTemplateRegistry(object):
         If an email template is already registered, this will raise AlreadyRegistered.
         """
         if path in self._registry:
-            raise AlreadyRegistered('The template %s is already registered' % path)
-        self._registry[path] = RegistrationItem(path, help_text, help_context, name=name)
+            raise AlreadyRegistered("The template %s is already registered" % path)
+        self._registry[path] = RegistrationItem(
+            path, help_text, help_context, name=name
+        )
         logger.debug("Registered email template %s", path)
 
     def is_registered(self, path):
@@ -146,11 +161,12 @@ class EmailTemplateRegistry(object):
         Returns text that can be used as form help text for creating email templates.
         """
         try:
-            form_help_text = render_to_string("admin/emailtemplates/_helptext.html", context={
-                'registration_item': self.get_registration(path)
-            })
+            form_help_text = render_to_string(
+                "admin/emailtemplates/_helptext.html",
+                context={"registration_item": self.get_registration(path)},
+            )
         except NotRegistered:
-            form_help_text = u""
+            form_help_text = ""
         return form_help_text
 
 
