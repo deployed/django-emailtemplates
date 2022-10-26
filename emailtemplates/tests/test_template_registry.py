@@ -81,6 +81,13 @@ class EmailTemplateRegistryTest(TestCase):
         registry.register("hello_template.html")
         self.assertTrue(registry.is_registered("hello_template.html"))
 
+    def test_get_subject(self):
+        template_registry = EmailTemplateRegistry()
+        template_registry.register("hello_template.html", subject="subject")
+        self.assertEqual(
+            template_registry.get_subject("hello_template.html"), "subject"
+        )
+
     def test_get_help_text(self):
         template_registry = EmailTemplateRegistry()
         template_registry.register(

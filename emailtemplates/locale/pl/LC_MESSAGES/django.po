@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-09 13:50+0200\n"
+"POT-Creation-Date: 2022-10-26 12:24+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,15 +16,15 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n"
-"%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n"
-"%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
+"Plural-Forms: nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && "
+"(n%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && "
+"n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
 
-#: emailtemplates/admin.py:19 emailtemplates/models.py:83
+#: emailtemplates/admin.py:19 emailtemplates/models.py:98
 msgid "Attachment"
 msgstr "Załącznik"
 
-#: emailtemplates/admin.py:20 emailtemplates/models.py:84
+#: emailtemplates/admin.py:20 emailtemplates/models.py:99
 msgid "Attachments"
 msgstr "Załączniki"
 
@@ -40,94 +40,103 @@ msgstr "Akcje"
 msgid "E-MAIL TEMPLATES"
 msgstr "Szblony wiadomości E-mail"
 
-#: emailtemplates/forms.py:20 emailtemplates/models.py:29
+#: emailtemplates/forms.py:20 emailtemplates/models.py:31
 msgid "template"
 msgstr "szablon"
 
-#: emailtemplates/models.py:27 emailtemplates/models.py:68
-#: emailtemplates/models.py:101
+#: emailtemplates/models.py:29 emailtemplates/models.py:83
+#: emailtemplates/models.py:116
 msgid "ID"
 msgstr ""
 
-#: emailtemplates/models.py:30 emailtemplates/models.py:103
+#: emailtemplates/models.py:33 emailtemplates/models.py:118
 msgid "subject"
 msgstr "tytuł"
 
-#: emailtemplates/models.py:31 emailtemplates/models.py:104
+#: emailtemplates/models.py:36
+msgid "you can use variables from table"
+msgstr "możesz użyć zmiennych kontekstowych z tabeli"
+
+#: emailtemplates/models.py:38 emailtemplates/models.py:119
 msgid "content"
 msgstr "zawartość"
 
-#: emailtemplates/models.py:33
+#: emailtemplates/models.py:40
 msgid "language"
 msgstr "język"
 
-#: emailtemplates/models.py:39
+#: emailtemplates/models.py:45
+#| msgid "Ordering"
+msgid "ordering"
+msgstr "kolejność"
+
+#: emailtemplates/models.py:47
 msgid "attachments"
 msgstr "załączniki"
 
-#: emailtemplates/models.py:41
+#: emailtemplates/models.py:49
 msgid "created"
 msgstr "utworzono"
 
-#: emailtemplates/models.py:42
+#: emailtemplates/models.py:50
 msgid "modified"
 msgstr "zmodyfikowano"
 
-#: emailtemplates/models.py:46
+#: emailtemplates/models.py:54
 msgid "Email template"
 msgstr "Szablon wiadomości"
 
-#: emailtemplates/models.py:47
+#: emailtemplates/models.py:55
 msgid "Email templates"
 msgstr "Szablony wiadomości"
 
-#: emailtemplates/models.py:70
+#: emailtemplates/models.py:85
 msgid "name"
 msgstr "nazwa"
 
-#: emailtemplates/models.py:72
+#: emailtemplates/models.py:87
 msgid "Attachment file"
 msgstr "Plik załącznika"
 
-#: emailtemplates/models.py:75
+#: emailtemplates/models.py:90
 msgid "Comment"
 msgstr "Komentarz"
 
-#: emailtemplates/models.py:75
+#: emailtemplates/models.py:90
 msgid "visible only in admin"
 msgstr "widoczne tylko w panelu administracyjnym"
 
-#: emailtemplates/models.py:77
+#: emailtemplates/models.py:92
 msgid "Ordering"
 msgstr "Kolejność"
 
-#: emailtemplates/models.py:78
+#: emailtemplates/models.py:93
 msgid "Send as link"
 msgstr "Wyślij jako link"
 
-#: emailtemplates/models.py:87
+#: emailtemplates/models.py:102
 #, python-format
 msgid "Attachment: %s"
 msgstr "Załącznik: %s"
 
-#: emailtemplates/models.py:105
+#: emailtemplates/models.py:120
 msgid "sent"
 msgstr "wysłano"
 
-#: emailtemplates/models.py:108
+#: emailtemplates/models.py:123
 msgid "Mass email message"
 msgstr "Wiadomość grupowa"
 
-#: emailtemplates/models.py:109
+#: emailtemplates/models.py:124
 msgid "Mass email messages"
 msgstr "Wiadomości grupowe"
 
-#: emailtemplates/registry.py:80
+#: emailtemplates/registry.py:81
 #, python-format
 msgid "<b>USAGE: %s</b>"
 msgstr "<b>UŻYCIE: %s</b>"
 
-#: emailtemplates/registry.py:83
+#: emailtemplates/registry.py:84
 #, python-format
 msgid "<b>CONTEXT:</b><br/>%s"
 msgstr "<b>KONTEKST:</b><br/>%s"

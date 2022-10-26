@@ -49,10 +49,11 @@ class HelpContext(object):
 
 
 class RegistrationItem(object):
-    def __init__(self, path, help_text="", help_context=None, name=""):
+    def __init__(self, path, help_text="", help_context=None, name="", subject=""):
         self.name = name or path
         self.path = path
         self.help_text = help_text
+        self.subject = subject
         self.help_context_obj = HelpContext(help_context)
 
     @property
@@ -97,7 +98,7 @@ class EmailTemplateRegistry(object):
     def __init__(self):
         self._registry = {}
 
-    def register(self, path, name="", help_text=None, help_context=None):
+    def register(self, path, name="", help_text=None, help_context=None, subject=""):
         """
         Registers email template.
 
@@ -109,6 +110,7 @@ class EmailTemplateRegistry(object):
         :param path: Template file path. It will become immutable registry lookup key.
         :param help_text: Help text to describe template in admin site
         :param help_context: Dictionary of possible keys used in the context and description of their content
+        :param subject: Default subject of email [optional]
 
         `help_context` items values may be strings or tuples of two strings. If strings, then email template preview
         will use variable names to fill context, otherwise the second tuple element will become example value.
@@ -118,7 +120,7 @@ class EmailTemplateRegistry(object):
         if path in self._registry:
             raise AlreadyRegistered("The template %s is already registered" % path)
         self._registry[path] = RegistrationItem(
-            path, help_text, help_context, name=name
+            path, help_text, help_context, name=name, subject=subject
         )
         logger.debug("Registered email template %s", path)
 
@@ -146,6 +148,9 @@ class EmailTemplateRegistry(object):
 
     def get_help_content(self, path):
         return self.get_registration(path).get_help_content()
+
+    def get_subject(self, path):
+        return self.get_registration(path).subject
 
     def registration_items(self):
         return self._registry.values()
