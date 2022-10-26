@@ -4,9 +4,11 @@ import os
 
 from django.conf import settings
 from django.db import models
+from django.utils import translation
 from django.utils.translation import gettext_lazy as _
 
 from emailtemplates.helpers import TemplateSourceLoader, mass_mailing_recipients
+from emailtemplates.registry import email_templates, NotRegistered
 
 try:
     from django.utils.timezone import now
@@ -27,7 +29,12 @@ class EmailTemplate(models.Model):
         auto_created=True, primary_key=True, serialize=False, verbose_name=_("ID")
     )
     title = models.CharField(_("template"), max_length=255)
-    subject = models.CharField(_("subject"), max_length=255, blank=True)
+    subject = models.CharField(
+        _("subject"),
+        max_length=255,
+        blank=True,
+        help_text=_("you can use variables from table"),
+    )
     content = models.TextField(_("content"))
     language = models.CharField(
         _("language"),
@@ -35,6 +42,7 @@ class EmailTemplate(models.Model):
         choices=settings.LANGUAGES,
         default=settings.LANGUAGE_CODE,
     )
+    ordering = models.PositiveIntegerField(verbose_name=_("ordering"), default=1)
     attachments = models.ManyToManyField(
         "EmailAttachment", blank=True, verbose_name=_("attachments")
     )
@@ -45,6 +53,7 @@ class EmailTemplate(models.Model):
         unique_together = (("title", "language"),)
         verbose_name = _("Email template")
         verbose_name_plural = _("Email templates")
+        ordering = ("ordering",)
 
     def __str__(self):
         return "%s -> %s" % (self.title, self.language)
@@ -57,9 +66,18 @@ class EmailTemplate(models.Model):
             logger.error("Error loading template %s. Details: %s ", self.title, e)
             return ""
 
+    def get_default_subject(self):
+        translation.activate(self.language)
+        try:
+            return email_templates.get_subject(self.title)
+        except NotRegistered:
+            return ""
+
     def save(self, *args, **kwargs):
         if not self.content:
             self.content = self.get_default_content()
+        if not self.subject:
+            self.subject = self.get_default_subject()
         super(EmailTemplate, self).save(*args, **kwargs)
 
 

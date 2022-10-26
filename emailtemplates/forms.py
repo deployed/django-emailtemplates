@@ -27,6 +27,7 @@ class EmailTemplateAdminForm(forms.ModelForm):
             "subject",
             "content",
             "language",
+            "ordering",
             "created",
             "modified",
         ]

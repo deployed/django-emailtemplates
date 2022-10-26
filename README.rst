@@ -16,6 +16,10 @@ Assumptions
 Changelog
 =========
 
+1.1.15
+------
+* ordering in email template & default subject from registry - https://github.com/deployed/django-emailtemplates/pull/37
+
 1.1.14
 ------
 * Additional fields for email attachment - https://github.com/deployed/django-emailtemplates/pull/36
