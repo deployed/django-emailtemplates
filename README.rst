@@ -16,6 +16,10 @@ Assumptions
 Changelog
 =========
 
+1.1.16
+------
+* change max_length from 100 to 255 in email attachments - https://github.com/deployed/django-emailtemplates/pull/38
+
 1.1.15
 ------
 * ordering in email template & default subject from registry - https://github.com/deployed/django-emailtemplates/pull/37
