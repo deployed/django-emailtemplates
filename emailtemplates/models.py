@@ -87,7 +87,7 @@ class BaseEmailAttachment(models.Model):
     )
     name = models.CharField(_("name"), blank=True, max_length=50)
     attachment_file = models.FileField(
-        _("Attachment file"), upload_to="emails/attachments/"
+        _("Attachment file"), upload_to="emails/attachments/", max_length=255
     )
     comment = models.TextField(
         verbose_name=_("Comment"), blank=True, help_text=_("visible only in admin")
