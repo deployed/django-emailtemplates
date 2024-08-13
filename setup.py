@@ -8,6 +8,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 install_requires = [
     'Django>=1.11',
+    'packaging',
 ]
 
 tests_require = [
@@ -16,7 +17,7 @@ tests_require = [
 
 setup(
     name='django-emailtemplates',
-    version='1.1.16',
+    version='1.1.17',
     packages=find_packages(),
     package_data={'emailtemplates': ['locale/*/LC_MESSAGES/*.po', 'locale/*/LC_MESSAGES/*.mo']},
     include_package_data=True,
