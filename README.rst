@@ -16,6 +16,10 @@ Assumptions
 Changelog
 =========
 
+1.1.17
+------
+* Add support for django 4 - https://github.com/deployed/django-emailtemplates/pull/39
+
 1.1.16
 ------
 * change max_length from 100 to 255 in email attachments - https://github.com/deployed/django-emailtemplates/pull/38

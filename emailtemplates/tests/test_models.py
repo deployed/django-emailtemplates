@@ -93,7 +93,9 @@ class MassEmailMessageTest(TestCase):
         recipients = ["person@example.com"]
         sent = self.mass_email_message.send(recipients)
         self.assertTrue(sent)
-        self.assertEqual(
-            mail.outbox[0].attachments,
-            [("example_file.txt", "Some content of example file.", "text/plain")],
-        )
+        attachments = mail.outbox[0].attachments
+        self.assertEqual(len(attachments), 1)
+        self.assertTrue(attachments[0][0].startswith("example_file"))
+        self.assertTrue(attachments[0][0].endswith(".txt"))
+        self.assertEqual(attachments[0][1], "Some content of example file.")
+        self.assertEqual(attachments[0][2], "text/plain")
