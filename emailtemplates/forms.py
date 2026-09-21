@@ -9,7 +9,12 @@ from django.utils.functional import lazy
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from emailtemplates.models import EmailTemplate, MassEmailAttachment, MassEmailMessage
+from emailtemplates.models import (
+    EXTENDS_TAG_RE,
+    EmailTemplate,
+    MassEmailAttachment,
+    MassEmailMessage,
+)
 from emailtemplates.registry import email_templates
 
 logger = logging.getLogger(__name__)
@@ -24,6 +29,7 @@ class EmailTemplateAdminForm(forms.ModelForm):
         model = EmailTemplate
         fields = [
             "title",
+            "layout",
             "subject",
             "content",
             "language",
@@ -53,6 +59,31 @@ class EmailTemplateAdminForm(forms.ModelForm):
         except TemplateSyntaxError as e:
             raise ValidationError("Syntax error in custom email template: %s" % e)
         return content
+
+    def clean(self):
+        cleaned_data = super(EmailTemplateAdminForm, self).clean()
+        layout = cleaned_data.get("layout")
+        if not layout:
+            return cleaned_data
+
+        content = cleaned_data.get("content")
+        if not content:
+            # empty content is replaced with the file template on save, see
+            # EmailTemplate.save()
+            content = EmailTemplate(
+                title=cleaned_data.get("title") or ""
+            ).get_default_content()
+
+        if EXTENDS_TAG_RE.search(content or ""):
+            self.add_error(
+                "layout",
+                _(
+                    "This content uses the {% extends %} tag, so it already brings its own "
+                    "frame and cannot be placed inside a layout. Remove the {% extends %} "
+                    "tag from the content or leave the layout empty."
+                ),
+            )
+        return cleaned_data
 
 
 class MassEmailAttachmentForm(forms.ModelForm):

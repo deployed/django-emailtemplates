@@ -13,8 +13,59 @@ Assumptions
 * Site Admins should know context for each template.
 * Site Admins should be familiar with Django Template System.
 
+Email layouts
+=============
+
+An ``EmailLayout`` is a reusable frame for emails: everything that should surround the
+content of an email template, e.g. a header with a logo and a footer with company data.
+Layouts are created and edited in the Admin Panel, so Site Admins can change the look of
+all emails at once, without a deployment.
+
+A layout has a ``name``, ``header_content`` and ``footer_content``. Every email template
+can optionally point to one layout (``EmailTemplate.layout``, empty by default). When a
+layout is selected, the email is rendered as::
+
+    header_content + EmailTemplate.content + footer_content
+
+The three parts are concatenated first and rendered afterwards, as a single Django
+template with a single context. The header and the footer may therefore use the same
+context variables as the email template itself, e.g.::
+
+    header_content: <img src="{{ STATIC_URL }}img/logo.png">
+    content:        <p>Hello {{ full_name }},</p>
+    footer_content: <p>Sent by {{ shop_domain }}</p>
+
+Nothing changes for email templates without a layout - they are rendered exactly as
+before, from the database or from the filesystem.
+
+Layouts and ``{% extends %}``
+-----------------------------
+
+Template content that uses ``{% extends %}`` already brings its own frame, and the tag
+must stay the first one in a template, so such content cannot be wrapped in a layout. The
+admin form rejects that combination; if it is created another way, the layout is ignored
+and a warning is logged. Use either ``{% extends %}`` (frame in the filesystem, for
+developers) or a layout (frame in the database, for Site Admins).
+
+Previews
+--------
+
+* *Show email preview* on an email template renders the template together with its
+  layout, filled with the example context from the registry.
+* *Show layout preview* on a layout renders the header and the footer with a placeholder
+  in place of the email content.
+
+Both previews work on saved data, so save the template after picking a layout to see the
+whole email. A live preview widget of the project (if there is one) keeps showing the
+edited content alone - the layout is not part of what is being edited there.
+
 Changelog
 =========
+
+1.2.0
+-----
+* Email layouts: an optional, admin-editable header and footer shared by email templates.
+  ``EmailLayout`` model, ``EmailTemplate.layout`` field, layout aware previews.
 
 1.1.17
 ------

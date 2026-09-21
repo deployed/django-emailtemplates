@@ -127,7 +127,11 @@ class EmailFromTemplate(object):
                 )
                 break
             else:
-                self.template = str(tmp.content)
+                # `template_class` may be any model with a `content` field (e.g.
+                # MassEmailMessage), only EmailTemplate knows about layouts.
+                self.template = str(
+                    tmp.get_content() if hasattr(tmp, "get_content") else tmp.content
+                )
                 self.subject = self.get_subject(tmp)
                 self._template_source = "database"
                 logger.debug("Got template %s from database", self.name)
