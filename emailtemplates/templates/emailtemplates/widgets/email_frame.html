@@ -1,0 +1,10 @@
+{% load i18n %}
+<div class="email-frame">
+  <div class="email-frame__part">
+    {% with sub=widget.subwidgets.0 %}{% include sub.template_name with widget=sub %}{% endwith %}
+  </div>
+  <div class="email-frame__divider">{% translate "content of the email template" %}</div>
+  <div class="email-frame__part email-frame__part--footer">
+    {% with sub=widget.subwidgets.1 %}{% include sub.template_name with widget=sub %}{% endwith %}
+  </div>
+</div>

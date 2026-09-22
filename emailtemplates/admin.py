@@ -4,7 +4,12 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from .forms import EmailTemplateAdminForm, MassEmailMessageForm, MassEmailAttachmentForm
+from .forms import (
+    EmailLayoutAdminForm,
+    EmailTemplateAdminForm,
+    MassEmailMessageForm,
+    MassEmailAttachmentForm,
+)
 from .models import (
     EmailLayout,
     EmailTemplate,
@@ -19,6 +24,7 @@ class EmailLayoutAdmin(admin.ModelAdmin):
     Admin view of EmailLayout
     """
 
+    form = EmailLayoutAdminForm
     list_display = (
         "name",
         "show_email_templates",
@@ -28,8 +34,8 @@ class EmailLayoutAdmin(admin.ModelAdmin):
     readonly_fields = ["show_links", "created", "modified"]
     fields = [
         "name",
-        "header_content",
-        "footer_content",
+        "frame",
+        "styles",
         "show_links",
         "created",
         "modified",

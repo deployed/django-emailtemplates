@@ -31,7 +31,7 @@ class EmailLayout(models.Model):
     template, e.g. a header with a logo and a footer with company data.
 
     An email using a layout is rendered as:
-    `header_content` + `EmailTemplate.content` + `footer_content`.
+    `<style>styles</style>` + `header_content` + `EmailTemplate.content` + `footer_content`.
 
     All three parts are rendered together, as one Django template and with one context, so
     the header and the footer may use the same context variables as the email template.
@@ -52,6 +52,16 @@ class EmailLayout(models.Model):
             "Rendered below the content of every email template using this layout."
         ),
     )
+    styles = models.TextField(
+        _("CSS styles"),
+        blank=True,
+        help_text=_(
+            # help_text is rendered as HTML by the admin, so the tag has to be escaped or
+            # the browser opens a real <style> element and swallows the rest of the text
+            "Plain CSS, without the &lt;style&gt; tag - it is added automatically and "
+            "placed before the header."
+        ),
+    )
     created = models.DateTimeField(_("created"), auto_now_add=True)
     modified = models.DateTimeField(_("modified"), auto_now=True)
 
@@ -63,11 +73,21 @@ class EmailLayout(models.Model):
     def __str__(self):
         return self.name
 
+    def styles_tag(self):
+        """
+        `styles` wrapped in a <style> tag, empty string when no styles are defined.
+        """
+        if not self.styles.strip():
+            return ""
+        return '<style type="text/css">%s</style>' % self.styles
+
     def wrap_content(self, content):
         """
-        Returns given content surrounded by the header and the footer of this layout.
+        Returns given content surrounded by the styles, header and footer of this layout.
         """
-        return "".join((self.header_content, content or "", self.footer_content))
+        return "".join(
+            (self.styles_tag(), self.header_content, content, self.footer_content)
+        )
 
 
 class EmailTemplate(models.Model):

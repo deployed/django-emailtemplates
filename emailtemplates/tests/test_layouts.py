@@ -6,7 +6,7 @@ from django.conf import settings
 from django.test import TestCase
 
 from ..email import EmailFromTemplate
-from ..forms import EmailTemplateAdminForm
+from ..forms import EmailLayoutAdminForm, EmailTemplateAdminForm
 from ..models import EmailLayout, EmailTemplate
 from ..registry import AlreadyRegistered, email_templates
 
@@ -43,6 +43,21 @@ class EmailLayoutTest(TestCase):
         self.assertEqual(
             self.layout.wrap_content(""), "<div>HEADER</div><div>FOOTER</div>"
         )
+
+    def test_no_style_tag_when_no_styles(self):
+        self.assertNotIn("<style", self.layout.wrap_content("<p>Hello</p>"))
+
+    def test_styles_are_wrapped_in_a_style_tag_before_the_header(self):
+        self.layout.styles = "body { color: red; }"
+        self.assertEqual(
+            self.layout.wrap_content("<p>Hello</p>"),
+            '<style type="text/css">body { color: red; }</style>'
+            "<div>HEADER</div><p>Hello</p><div>FOOTER</div>",
+        )
+
+    def test_blank_styles_produce_no_style_tag(self):
+        self.layout.styles = "   \n  "
+        self.assertNotIn("<style", self.layout.wrap_content("<p>Hello</p>"))
 
 
 class EmailTemplateContentTest(TestCase):
@@ -114,6 +129,52 @@ class EmailFromTemplateWithLayoutTest(TestCase):
         self.email_template.layout = None
         self.email_template.save()
         self.assertEqual(self.get_rendered_message(), "<p>Hello Antje</p>")
+
+
+class EmailLayoutAdminFormTest(TestCase):
+    """
+    Header and footer are edited as one field, so the form has to load them into it and
+    split them back out on save.
+    """
+
+    def get_form_data(self, **kwargs):
+        data = {
+            "name": "Standard",
+            "frame_0": "<div>HEADER",
+            "frame_1": "</div>",
+            "styles": "body { color: red; }",
+        }
+        data.update(kwargs)
+        return data
+
+    def test_saves_the_two_halves_into_header_and_footer(self):
+        form = EmailLayoutAdminForm(data=self.get_form_data())
+        self.assertTrue(form.is_valid(), form.errors)
+
+        layout = form.save()
+
+        layout.refresh_from_db()
+        self.assertEqual(layout.header_content, "<div>HEADER")
+        self.assertEqual(layout.footer_content, "</div>")
+        self.assertEqual(layout.styles, "body { color: red; }")
+
+    def test_loads_header_and_footer_of_an_existing_layout(self):
+        layout = EmailLayout.objects.create(
+            name="Standard", header_content="<div>H", footer_content="</div>"
+        )
+
+        form = EmailLayoutAdminForm(instance=layout)
+
+        self.assertEqual(form.initial["frame"], ["<div>H", "</div>"])
+
+    def test_empty_frame_is_allowed(self):
+        form = EmailLayoutAdminForm(data=self.get_form_data(frame_0="", frame_1=""))
+        self.assertTrue(form.is_valid(), form.errors)
+
+        layout = form.save()
+
+        self.assertEqual(layout.header_content, "")
+        self.assertEqual(layout.footer_content, "")
 
 
 class EmailTemplateAdminFormTest(TestCase):

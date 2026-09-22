@@ -11,13 +11,66 @@ from django.utils.translation import gettext_lazy as _
 
 from emailtemplates.models import (
     EXTENDS_TAG_RE,
+    EmailLayout,
     EmailTemplate,
     MassEmailAttachment,
     MassEmailMessage,
 )
 from emailtemplates.registry import email_templates
+from emailtemplates.widgets import CodeEditorTextarea, EmailFrameWidget
 
 logger = logging.getLogger(__name__)
+
+
+class EmailFrameField(forms.MultiValueField):
+    """
+    `header_content` and `footer_content` as one field, see `EmailFrameWidget`.
+    """
+
+    widget = EmailFrameWidget
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("required", False)
+        kwargs.setdefault("require_all_fields", False)
+        super(EmailFrameField, self).__init__(
+            fields=(
+                forms.CharField(required=False),
+                forms.CharField(required=False),
+            ),
+            **kwargs
+        )
+
+    def compress(self, data_list):
+        return data_list or ["", ""]
+
+
+class EmailLayoutAdminForm(forms.ModelForm):
+    frame = EmailFrameField(
+        label=_("Frame"),
+        help_text=_(
+            "Everything above the divider is sent before the content of the email "
+            "template, everything below it after. Tags opened above may be closed below."
+        ),
+    )
+
+    class Meta:
+        model = EmailLayout
+        fields = ["name", "styles"]
+        widgets = {"styles": CodeEditorTextarea(mode="css")}
+
+    def __init__(self, *args, **kwargs):
+        super(EmailLayoutAdminForm, self).__init__(*args, **kwargs)
+        self.initial["frame"] = [
+            self.instance.header_content,
+            self.instance.footer_content,
+        ]
+
+    def save(self, commit=True):
+        layout = super(EmailLayoutAdminForm, self).save(commit=False)
+        layout.header_content, layout.footer_content = self.cleaned_data["frame"]
+        if commit:
+            layout.save()
+        return layout
 
 
 class EmailTemplateAdminForm(forms.ModelForm):
@@ -37,6 +90,7 @@ class EmailTemplateAdminForm(forms.ModelForm):
             "created",
             "modified",
         ]
+        widgets = {"content": CodeEditorTextarea(attrs={"rows": 24})}
 
     def __init__(self, *args, **kwargs):
         super(EmailTemplateAdminForm, self).__init__(*args, **kwargs)

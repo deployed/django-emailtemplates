@@ -21,19 +21,27 @@ content of an email template, e.g. a header with a logo and a footer with compan
 Layouts are created and edited in the Admin Panel, so Site Admins can change the look of
 all emails at once, without a deployment.
 
-A layout has a ``name``, ``header_content`` and ``footer_content``. Every email template
-can optionally point to one layout (``EmailTemplate.layout``, empty by default). When a
-layout is selected, the email is rendered as::
+A layout has a ``name``, ``header_content``, ``footer_content`` and ``styles``. Every
+email template can optionally point to one layout (``EmailTemplate.layout``, empty by
+default). When a layout is selected, the email is rendered as::
 
-    header_content + EmailTemplate.content + footer_content
+    <style>styles</style> + header_content + EmailTemplate.content + footer_content
 
-The three parts are concatenated first and rendered afterwards, as a single Django
-template with a single context. The header and the footer may therefore use the same
-context variables as the email template itself, e.g.::
+``styles`` holds plain CSS without the ``<style>`` tag, which is added automatically;
+empty ``styles`` adds no tag at all. Keeping the CSS in a field of its own means the
+header field holds markup only.
 
+The parts are concatenated first and rendered afterwards, as a single Django template
+with a single context. The header and the footer may therefore use the same context
+variables as the email template itself, e.g.::
+
+    styles:         .greeting { color: #c8524e; }
     header_content: <img src="{{ STATIC_URL }}img/logo.png">
-    content:        <p>Hello {{ full_name }},</p>
+    content:        <p class="greeting">Hello {{ full_name }},</p>
     footer_content: <p>Sent by {{ shop_domain }}</p>
+
+Because the parts are joined before being rendered, the header may open HTML tags that
+the footer closes - that is the normal way of wrapping the content in a container.
 
 Nothing changes for email templates without a layout - they are rendered exactly as
 before, from the database or from the filesystem.
@@ -52,20 +60,43 @@ Previews
 
 * *Show email preview* on an email template renders the template together with its
   layout, filled with the example context from the registry.
-* *Show layout preview* on a layout renders the header and the footer with a placeholder
-  in place of the email content.
+* *Show layout preview* on a layout renders the header, the footer and the styles with a
+  placeholder in place of the email content.
 
 Both previews work on saved data, so save the template after picking a layout to see the
-whole email. A live preview widget of the project (if there is one) keeps showing the
-edited content alone - the layout is not part of what is being edited there.
+whole email.
+
+There is deliberately no live preview while typing. The parts of a layout only render
+correctly together - a header that opens the tags its footer closes is broken HTML on its
+own - so a per-field preview reports errors that are not there.
+
+Editor
+------
+
+``header_content`` and ``footer_content`` are not edited as two separate fields. The
+admin shows them as a single *Frame* field: one box split by a divider standing for the
+content of the email template, the header above it and the footer below. That is how they
+are actually used - the header opens the tags the footer closes - and the form splits the
+value back into the two model fields on save. See ``EmailFrameWidget`` and
+``EmailFrameField``.
+
+The frame, ``styles`` and ``EmailTemplate.content`` are edited with CodeMirror syntax
+highlighting, which the library ships and wires up by default; projects need no widget
+configuration of their own. Any textarea with a ``data-editor-mode`` attribute (``html``
+or ``css``) gets the same treatment, see ``emailtemplates.widgets.CodeEditorTextarea``.
+
+The editors run without line numbers and, for HTML, without mismatched-tag marking: in a
+frame the closing tag of the header lives in the footer, so marking it as an error would
+be wrong.
 
 Changelog
 =========
 
 1.2.0
 -----
-* Email layouts: an optional, admin-editable header and footer shared by email templates.
-  ``EmailLayout`` model, ``EmailTemplate.layout`` field, layout aware previews.
+* Email layouts: an optional, admin-editable header, footer and CSS shared by email
+  templates. ``EmailLayout`` model, ``EmailTemplate.layout`` field, layout aware previews.
+* Syntax highlighting for the HTML and CSS fields in the admin, shipped with the library.
 
 1.1.17
 ------

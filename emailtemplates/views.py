@@ -8,6 +8,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.template import Template, Context
 from django.views import View
+from django.utils.html import escape
 from django.utils.translation import gettext as _
 
 from emailtemplates.models import EmailLayout, EmailTemplate, MassEmailMessage
@@ -59,7 +60,7 @@ class EmailLayoutPreviewView(View):
         except Exception as e:
             # header and footer may use context variables this preview does not provide,
             # show the problem instead of a 500
-            html = '<p style="color:red">%s</p>' % e
+            html = '<p style="color:red">%s</p>' % escape(e)
         return HttpResponse(html, content_type="text/html; charset=utf-8")
 
 
