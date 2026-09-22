@@ -56,8 +56,6 @@ class EmailLayout(models.Model):
         _("CSS styles"),
         blank=True,
         help_text=_(
-            # help_text is rendered as HTML by the admin, so the tag has to be escaped or
-            # the browser opens a real <style> element and swallows the rest of the text
             "Plain CSS, without the &lt;style&gt; tag - it is added automatically and "
             "placed before the header."
         ),
@@ -79,7 +77,7 @@ class EmailLayout(models.Model):
         """
         if not self.styles.strip():
             return ""
-        return '<style type="text/css">%s</style>' % self.styles
+        return f'<style type="text/css">{self.styles}</style>'
 
     def wrap_content(self, content):
         """

@@ -25,8 +25,6 @@ class EmailPreviewView(View):
 
     def get(self, request, *args, **kwargs):
         email_template = self.get_email_template()
-        # `get_content()` so that the preview shows exactly what will be sent, including
-        # the header and the footer of the selected layout.
         email_content = Template(email_template.get_content())
         return HttpResponse(
             email_content.render(Context(self.get_context_data())),
