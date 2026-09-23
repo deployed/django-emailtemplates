@@ -112,7 +112,6 @@ class EmailTemplateAdmin(admin.ModelAdmin):
             % (reverse("email_preview", kwargs={"pk": obj.pk}), _("Show email preview"))
         )
 
-    show_links.allow_tags = True
     show_links.short_description = _("Actions")
 
 
