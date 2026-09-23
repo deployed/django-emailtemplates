@@ -36,7 +36,7 @@ with a single context. The header and the footer may therefore use the same cont
 variables as the email template itself, e.g.::
 
     styles:         .greeting { color: #c8524e; }
-    header_content: <img src="{{ STATIC_URL }}img/logo.png">
+    header_content: <img src="https://{{ shop_domain }}/static/img/logo.png">
     content:        <p class="greeting">Hello {{ full_name }},</p>
     footer_content: <p>Sent by {{ shop_domain }}</p>
 
@@ -61,7 +61,8 @@ Previews
 * *Show email preview* on an email template renders the template together with its
   layout, filled with the example context from the registry.
 * *Show layout preview* on a layout renders the header, the footer and the styles with a
-  placeholder in place of the email content.
+  placeholder in place of the email content. It has no context, so variables used in the
+  header or the footer render empty.
 
 Both previews work on saved data, so save the template after picking a layout to see the
 whole email.
@@ -82,8 +83,9 @@ value back into the two model fields on save. See ``EmailFrameWidget`` and
 
 The frame, ``styles`` and ``EmailTemplate.content`` are edited with CodeMirror syntax
 highlighting, which the library ships and wires up by default; projects need no widget
-configuration of their own. Any textarea with a ``data-editor-mode`` attribute (``html``
-or ``css``) gets the same treatment, see ``emailtemplates.widgets.CodeEditorTextarea``.
+configuration of their own. Any textarea with a ``data-code-editor`` attribute holding
+CodeMirror options as JSON gets the same treatment; the easiest way to get one is
+``emailtemplates.widgets.CodeEditorTextarea(mode="html")`` (or ``mode="css"``).
 
 The editors run without line numbers and, for HTML, without mismatched-tag marking: in a
 frame the closing tag of the header lives in the footer, so marking it as an error would
@@ -96,7 +98,10 @@ Changelog
 -----
 * Email layouts: an optional, admin-editable header, footer and CSS shared by email
   templates. ``EmailLayout`` model, ``EmailTemplate.layout`` field, layout aware previews.
+* Check syntax errors in the header and footer of an email layout (admin form).
 * Syntax highlighting for the HTML and CSS fields in the admin, shipped with the library.
+* **Backward incompatible**: Python 3.10+ is required, Python 2.7 and Django 3.2 are no
+  longer supported.
 
 1.1.17
 ------
