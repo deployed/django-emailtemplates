@@ -17,7 +17,9 @@ from emailtemplates.registry import email_templates
 
 class EmailPreviewView(View):
     def get_email_template(self):
-        return get_object_or_404(EmailTemplate, pk=self.kwargs["pk"])
+        return get_object_or_404(
+            EmailTemplate.objects.select_related("layout"), pk=self.kwargs["pk"]
+        )
 
     def get_context_data(self):
         email_template = self.get_email_template()

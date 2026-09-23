@@ -85,6 +85,7 @@ class EmailTemplateAdmin(admin.ModelAdmin):
         "subject",
     )
     list_display_links = ("title",)
+    list_select_related = ("layout",)
     list_filter = (
         "title",
         "layout",
