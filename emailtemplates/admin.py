@@ -55,10 +55,16 @@ class EmailLayoutAdmin(admin.ModelAdmin):
 
     show_links.short_description = _("Actions")
 
-    def show_email_templates(self, obj):
-        return ", ".join(obj.email_templates.values_list("title", flat=True)) or _(
-            "not used"
+    def get_queryset(self, request):
+        return (
+            super(EmailLayoutAdmin, self)
+            .get_queryset(request)
+            .prefetch_related("email_templates")
         )
+
+    def show_email_templates(self, obj):
+        titles = [template.title for template in obj.email_templates.all()]
+        return ", ".join(titles) or _("not used")
 
     show_email_templates.short_description = _("Email templates")
 

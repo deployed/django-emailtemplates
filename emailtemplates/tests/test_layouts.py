@@ -3,8 +3,12 @@ from __future__ import unicode_literals
 
 import mock
 from django.conf import settings
-from django.test import TestCase
+from django.contrib import admin
+from django.contrib.auth.models import User
+from django.test import RequestFactory, TestCase
+from django.utils import translation
 
+from ..admin import EmailLayoutAdmin
 from ..email import EmailFromTemplate
 from ..forms import EmailLayoutAdminForm, EmailTemplateAdminForm
 from ..models import EmailLayout, EmailTemplate
@@ -239,3 +243,26 @@ class EmailTemplateAdminFormTest(TestCase):
             )
         )
         self.assertTrue(form.is_valid(), form.errors)
+
+
+class EmailLayoutAdminTest(TestCase):
+    def setUp(self):
+        self.model_admin = EmailLayoutAdmin(EmailLayout, admin.site)
+        self.request = RequestFactory().get("/")
+        self.request.user = User.objects.create_superuser("admin", "admin@example.com", "x")
+
+    def test_email_templates_of_all_layouts_are_listed_in_two_queries(self):
+        for name in ("First", "Second", "Third"):
+            layout = EmailLayout.objects.create(name=name)
+            EmailTemplate.objects.create(
+                title="%s.html" % name, layout=layout, content="<p>Hi</p>", subject="S"
+            )
+        EmailLayout.objects.create(name="Unused")
+
+        with self.assertNumQueries(2), translation.override("en"):
+            listed = [
+                str(self.model_admin.show_email_templates(layout))
+                for layout in self.model_admin.get_queryset(self.request)
+            ]
+
+        self.assertEqual(listed, ["First.html", "Second.html", "Third.html", "not used"])
