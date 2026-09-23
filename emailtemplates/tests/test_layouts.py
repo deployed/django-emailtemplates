@@ -176,6 +176,23 @@ class EmailLayoutAdminFormTest(TestCase):
         self.assertEqual(layout.header_content, "")
         self.assertEqual(layout.footer_content, "")
 
+    def test_template_syntax_error_is_rejected(self):
+        form = EmailLayoutAdminForm(
+            data=self.get_form_data(frame_0="{% if user %}<div>", frame_1="</div>")
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("frame", form.errors)
+
+    def test_tag_opened_in_header_may_be_closed_in_footer(self):
+        form = EmailLayoutAdminForm(
+            data=self.get_form_data(
+                frame_0="{% if user %}<div>", frame_1="</div>{% endif %}"
+            )
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+
 
 class EmailTemplateAdminFormTest(TestCase):
     def setUp(self):

@@ -65,6 +65,17 @@ class EmailLayoutAdminForm(forms.ModelForm):
             self.instance.footer_content,
         ]
 
+    def clean_frame(self):
+        header_content, footer_content = self.cleaned_data["frame"]
+        # header and footer are rendered as one template around the email content (see
+        # EmailLayout.wrap_content()), so a tag opened in the header may be closed in the
+        # footer - they can only be validated together
+        try:
+            Template(header_content + footer_content)
+        except TemplateSyntaxError as e:
+            raise ValidationError("Syntax error in email layout: %s" % e)
+        return [header_content, footer_content]
+
     def save(self, commit=True):
         layout = super(EmailLayoutAdminForm, self).save(commit=False)
         layout.header_content, layout.footer_content = self.cleaned_data["frame"]
