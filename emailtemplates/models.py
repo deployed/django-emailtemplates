@@ -1,6 +1,7 @@
 # coding=utf-8
 import logging
 import os
+import re
 
 from django.conf import settings
 from django.db import models
@@ -19,6 +20,73 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# `{% extends %}` must be the very first tag of a template, so content using it cannot be
+# wrapped in a layout. Such content is left untouched, see `EmailTemplate.get_content()`.
+EXTENDS_TAG_RE = re.compile(r"{%\s*extends[\s%]")
+
+
+class EmailLayout(models.Model):
+    """
+    Reusable frame for emails: everything that should surround the content of an email
+    template, e.g. a header with a logo and a footer with company data.
+
+    An email using a layout is rendered as:
+    `<style>styles</style>` + `header_content` + `EmailTemplate.content` + `footer_content`.
+
+    All three parts are rendered together, as one Django template and with one context, so
+    the header and the footer may use the same context variables as the email template.
+    """
+
+    name = models.CharField(_("name"), max_length=255, unique=True)
+    header_content = models.TextField(
+        _("header content"),
+        blank=True,
+        help_text=_(
+            "Rendered above the content of every email template using this layout."
+        ),
+    )
+    footer_content = models.TextField(
+        _("footer content"),
+        blank=True,
+        help_text=_(
+            "Rendered below the content of every email template using this layout."
+        ),
+    )
+    styles = models.TextField(
+        _("CSS styles"),
+        blank=True,
+        help_text=_(
+            "Plain CSS, without the &lt;style&gt; tag - it is added automatically and "
+            "placed before the header."
+        ),
+    )
+    created = models.DateTimeField(_("created"), auto_now_add=True)
+    modified = models.DateTimeField(_("modified"), auto_now=True)
+
+    class Meta:
+        verbose_name = _("Email layout")
+        verbose_name_plural = _("Email layouts")
+        ordering = ("name",)
+
+    def __str__(self):
+        return self.name
+
+    def styles_tag(self):
+        """
+        `styles` wrapped in a <style> tag, empty string when no styles are defined.
+        """
+        if not self.styles.strip():
+            return ""
+        return f'<style type="text/css">{self.styles}</style>'
+
+    def wrap_content(self, content):
+        """
+        Returns given content surrounded by the styles, header and footer of this layout.
+        """
+        return "".join(
+            (self.styles_tag(), self.header_content, content, self.footer_content)
+        )
+
 
 class EmailTemplate(models.Model):
     """
@@ -36,6 +104,18 @@ class EmailTemplate(models.Model):
         help_text=_("you can use variables from table"),
     )
     content = models.TextField(_("content"))
+    layout = models.ForeignKey(
+        "EmailLayout",
+        verbose_name=_("layout"),
+        related_name="email_templates",
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text=_(
+            "Optional. When set, the content above is rendered between the header and the "
+            "footer of the chosen layout."
+        ),
+    )
     language = models.CharField(
         _("language"),
         max_length=10,
@@ -57,6 +137,25 @@ class EmailTemplate(models.Model):
 
     def __str__(self):
         return "%s -> %s" % (self.title, self.language)
+
+    def get_content(self):
+        """
+        Content to render: wrapped in the selected layout, if there is one.
+
+        Content that uses `{% extends %}` brings its own frame and cannot be wrapped (the tag
+        must stay the first one in a template), so it is returned as it is. The admin form
+        rejects that combination, this is only a safety net for data created another way.
+        """
+        if not self.layout_id:
+            return self.content
+        if EXTENDS_TAG_RE.search(self.content or ""):
+            logger.warning(
+                "Email template %s uses {%% extends %%}, layout %s will be ignored.",
+                self.title,
+                self.layout_id,
+            )
+            return self.content
+        return self.layout.wrap_content(self.content)
 
     def get_default_content(self):
         loader = TemplateSourceLoader()

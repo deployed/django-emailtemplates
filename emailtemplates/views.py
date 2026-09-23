@@ -8,15 +8,18 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect
 from django.template import Template, Context
 from django.views import View
+from django.utils.html import escape
 from django.utils.translation import gettext as _
 
-from emailtemplates.models import EmailTemplate, MassEmailMessage
+from emailtemplates.models import EmailLayout, EmailTemplate, MassEmailMessage
 from emailtemplates.registry import email_templates
 
 
 class EmailPreviewView(View):
     def get_email_template(self):
-        return get_object_or_404(EmailTemplate, pk=self.kwargs["pk"])
+        return get_object_or_404(
+            EmailTemplate.objects.select_related("layout"), pk=self.kwargs["pk"]
+        )
 
     def get_context_data(self):
         email_template = self.get_email_template()
@@ -24,7 +27,7 @@ class EmailPreviewView(View):
 
     def get(self, request, *args, **kwargs):
         email_template = self.get_email_template()
-        email_content = Template(email_template.content)
+        email_content = Template(email_template.get_content())
         return HttpResponse(
             email_content.render(Context(self.get_context_data())),
             content_type="text/html; charset=utf-8",
@@ -32,6 +35,36 @@ class EmailPreviewView(View):
 
 
 email_preview_view = staff_member_required(EmailPreviewView.as_view())
+
+
+class EmailLayoutPreviewView(View):
+    """
+    Shows a layout with a placeholder in place of the email template content.
+    """
+
+    placeholder = (
+        '<div style="padding:30px;margin:10px 0;border:2px dashed #b0b0b0;'
+        'text-align:center;color:#707070;font-family:sans-serif;">%s</div>'
+    )
+
+    def get_layout(self):
+        return get_object_or_404(EmailLayout, pk=self.kwargs["pk"])
+
+    def get(self, request, *args, **kwargs):
+        layout = self.get_layout()
+        content = layout.wrap_content(
+            self.placeholder % _("Content of the email template goes here")
+        )
+        try:
+            html = Template(content).render(Context({}))
+        except Exception as e:
+            # header and footer may use context variables this preview does not provide,
+            # show the problem instead of a 500
+            html = '<p style="color:red">%s</p>' % escape(e)
+        return HttpResponse(html, content_type="text/html; charset=utf-8")
+
+
+email_layout_preview_view = staff_member_required(EmailLayoutPreviewView.as_view())
 
 
 class SendMassEmailView(View):

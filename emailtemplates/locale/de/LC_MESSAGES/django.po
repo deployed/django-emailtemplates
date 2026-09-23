@@ -162,5 +162,68 @@ msgstr ""
 "Beim Versuch, eine Massen-E-Mail-Nachricht zu senden, ist ein Fehler "
 "aufgetreten"
 
+#: emailtemplates/admin.py:46
+msgid "Show layout preview"
+msgstr "Layout-Vorschau anzeigen"
+
+#: emailtemplates/admin.py:54
+msgid "not used"
+msgstr "nicht verwendet"
+
+#: emailtemplates/forms.py:81
+msgid ""
+"This content uses the {% extends %} tag, so it already brings its own frame "
+"and cannot be placed inside a layout. Remove the {% extends %} tag from the "
+"content or leave the layout empty."
+msgstr ""
+"Dieser Inhalt verwendet das Tag {% extends %} und bringt damit bereits einen "
+"eigenen Rahmen mit. Er kann deshalb nicht in ein Layout eingefügt werden. "
+"Entfernen Sie das Tag {% extends %} aus dem Inhalt oder lassen Sie das Feld "
+"Layout leer."
+
+#: emailtemplates/models.py:42
+msgid "header content"
+msgstr "Kopfbereich"
+
+#: emailtemplates/models.py:45
+msgid "Rendered above the content of every email template using this layout."
+msgstr ""
+"Wird über dem Inhalt jeder E-Mail-Vorlage angezeigt, die dieses Layout "
+"verwendet."
+
+#: emailtemplates/models.py:49
+msgid "footer content"
+msgstr "Fußbereich"
+
+#: emailtemplates/models.py:52
+msgid "Rendered below the content of every email template using this layout."
+msgstr ""
+"Wird unter dem Inhalt jeder E-Mail-Vorlage angezeigt, die dieses Layout "
+"verwendet."
+
+#: emailtemplates/models.py:59
+msgid "Email layout"
+msgstr "E-Mail-Layout"
+
+#: emailtemplates/models.py:60
+msgid "Email layouts"
+msgstr "E-Mail-Layouts"
+
+#: emailtemplates/models.py:91
+msgid "layout"
+msgstr "Layout"
+
+#: emailtemplates/models.py:97
+msgid ""
+"Optional. When set, the content above is rendered between the header and the "
+"footer of the chosen layout."
+msgstr ""
+"Optional. Wenn gesetzt, wird der Inhalt oben zwischen Kopf- und Fußbereich "
+"des gewählten Layouts eingefügt."
+
+#: emailtemplates/views.py:55
+msgid "Content of the email template goes here"
+msgstr "Hier steht der Inhalt der E-Mail-Vorlage"
+
 #~ msgid "email template"
 #~ msgstr "E-Mail-Vorlage"

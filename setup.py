@@ -7,8 +7,7 @@ README = open(os.path.join(os.path.dirname(__file__), 'README.rst')).read()
 os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 install_requires = [
-    'Django>=1.11',
-    'packaging',
+    'Django>=4.0',
 ]
 
 tests_require = [
@@ -17,7 +16,7 @@ tests_require = [
 
 setup(
     name='django-emailtemplates',
-    version='1.1.17',
+    version='2.0.0',
     packages=find_packages(),
     package_data={'emailtemplates': ['locale/*/LC_MESSAGES/*.po', 'locale/*/LC_MESSAGES/*.mo']},
     include_package_data=True,
@@ -33,10 +32,15 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python :: 3.14',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
     ],
+    python_requires='>=3.10',
     install_requires=install_requires,
     tests_require=tests_require
 )

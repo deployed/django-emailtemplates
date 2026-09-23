@@ -1,0 +1,68 @@
+/* Syntax highlighted fields of the email templates admin. */
+
+.CodeMirror {
+    height: 260px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #24292f;
+    background: #fff;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+.CodeMirror-lines {
+    padding: 8px 0;
+}
+
+.CodeMirror pre.CodeMirror-line {
+    padding: 0 10px;
+}
+
+/* The email frame: header and footer are one field, split by the divider that stands for
+   the content of the email template. */
+.email-frame {
+    max-width: 900px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.email-frame__part > .CodeMirror {
+    border: 0;
+    border-radius: 0;
+}
+
+.email-frame__part--footer > .CodeMirror {
+    height: 140px;
+}
+
+.email-frame__divider {
+    display: flex;
+    align-items: center;
+    padding: 7px 12px;
+    background: #eef1f5;
+    border-top: 1px solid #ced4da;
+    border-bottom: 1px solid #ced4da;
+    color: #5a6472;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.email-frame__divider::before,
+.email-frame__divider::after {
+    content: "";
+    flex: 1;
+    border-top: 1px dashed #aab2bd;
+}
+
+.email-frame__divider::before {
+    margin-right: 12px;
+}
+
+.email-frame__divider::after {
+    margin-left: 12px;
+}

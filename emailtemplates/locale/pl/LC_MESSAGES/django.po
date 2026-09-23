@@ -169,5 +169,65 @@ msgstr "Wiadomość grupowa wysłana pomyślnie"
 msgid "Error occurred when trying to send mass email message."
 msgstr "Wystąpił błąd podczas próby wysłania wiadomości grupowej."
 
+#: emailtemplates/admin.py:46
+msgid "Show layout preview"
+msgstr "Pokaż podgląd layoutu"
+
+#: emailtemplates/admin.py:54
+msgid "not used"
+msgstr "nieużywany"
+
+#: emailtemplates/forms.py:81
+msgid ""
+"This content uses the {% extends %} tag, so it already brings its own frame "
+"and cannot be placed inside a layout. Remove the {% extends %} tag from the "
+"content or leave the layout empty."
+msgstr ""
+"Ta treść używa taga {% extends %}, więc ma już własną ramę i nie może zostać "
+"umieszczona w layoucie. Usuń tag {% extends %} z treści albo zostaw puste "
+"pole layout."
+
+#: emailtemplates/models.py:42
+msgid "header content"
+msgstr "treść nagłówka"
+
+#: emailtemplates/models.py:45
+msgid "Rendered above the content of every email template using this layout."
+msgstr ""
+"Wyświetlana nad treścią każdego szablonu email korzystającego z tego layoutu."
+
+#: emailtemplates/models.py:49
+msgid "footer content"
+msgstr "treść stopki"
+
+#: emailtemplates/models.py:52
+msgid "Rendered below the content of every email template using this layout."
+msgstr ""
+"Wyświetlana pod treścią każdego szablonu email korzystającego z tego layoutu."
+
+#: emailtemplates/models.py:59
+msgid "Email layout"
+msgstr "Layout email"
+
+#: emailtemplates/models.py:60
+msgid "Email layouts"
+msgstr "Layouty email"
+
+#: emailtemplates/models.py:91
+msgid "layout"
+msgstr "layout"
+
+#: emailtemplates/models.py:97
+msgid ""
+"Optional. When set, the content above is rendered between the header and the "
+"footer of the chosen layout."
+msgstr ""
+"Opcjonalne. Jeśli ustawione, powyższa treść jest renderowana pomiędzy "
+"nagłówkiem a stopką wybranego layoutu."
+
+#: emailtemplates/views.py:55
+msgid "Content of the email template goes here"
+msgstr "Tutaj znajdzie się treść szablonu email"
+
 #~ msgid "email template"
 #~ msgstr "szablon email"

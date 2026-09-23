@@ -4,13 +4,72 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from .forms import EmailTemplateAdminForm, MassEmailMessageForm, MassEmailAttachmentForm
+from .forms import (
+    EmailLayoutAdminForm,
+    EmailTemplateAdminForm,
+    MassEmailMessageForm,
+    MassEmailAttachmentForm,
+)
 from .models import (
+    EmailLayout,
     EmailTemplate,
     MassEmailMessage,
     MassEmailAttachment,
     EmailAttachment,
 )
+
+
+class EmailLayoutAdmin(admin.ModelAdmin):
+    """
+    Admin view of EmailLayout
+    """
+
+    form = EmailLayoutAdminForm
+    list_display = (
+        "name",
+        "show_email_templates",
+        "modified",
+    )
+    search_fields = ("name",)
+    readonly_fields = ["show_links", "created", "modified"]
+    fields = [
+        "name",
+        "frame",
+        "styles",
+        "show_links",
+        "created",
+        "modified",
+    ]
+    save_on_top = True
+
+    def show_links(self, obj):
+        if not obj.pk:
+            return ""
+        return mark_safe(
+            '<a href="%s" target="_blank">%s</a>'
+            % (
+                reverse("email_layout_preview", kwargs={"pk": obj.pk}),
+                _("Show layout preview"),
+            )
+        )
+
+    show_links.short_description = _("Actions")
+
+    def get_queryset(self, request):
+        return (
+            super(EmailLayoutAdmin, self)
+            .get_queryset(request)
+            .prefetch_related("email_templates")
+        )
+
+    def show_email_templates(self, obj):
+        titles = [template.title for template in obj.email_templates.all()]
+        return ", ".join(titles) or _("not used")
+
+    show_email_templates.short_description = _("Email templates")
+
+
+admin.site.register(EmailLayout, EmailLayoutAdmin)
 
 
 class EmailTemplateAttachmentInline(admin.TabularInline):
@@ -27,12 +86,15 @@ class EmailTemplateAdmin(admin.ModelAdmin):
 
     list_display = (
         "title",
+        "layout",
         "language",
         "subject",
     )
     list_display_links = ("title",)
+    list_select_related = ("layout",)
     list_filter = (
         "title",
+        "layout",
         "language",
     )
     search_fields = ("title", "subject")
@@ -50,7 +112,6 @@ class EmailTemplateAdmin(admin.ModelAdmin):
             % (reverse("email_preview", kwargs={"pk": obj.pk}), _("Show email preview"))
         )
 
-    show_links.allow_tags = True
     show_links.short_description = _("Actions")
 
 
