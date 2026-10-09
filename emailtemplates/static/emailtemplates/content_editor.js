@@ -3,6 +3,9 @@
  * rich text (TinyMCE) or HTML code (CodeMirror), switched with the buttons above it without
  * saving. The options come from the `data-content-editor` attribute the widget writes.
  *
+ * Next to the editor, the live preview: the email as it would be sent, rendered by the
+ * server with the unsaved content, subject, preheader and layout of the form.
+ *
  * Also the "emailtemplates" TinyMCE plugin: the Variables and Blocks buttons, template tags
  * shown as chips removed as a whole, and blocks expanded into a preview with example data
  * when clicked.
@@ -140,6 +143,72 @@
         });
     }
 
+    // Fields of the form, besides the content, the preview is rendered with.
+    var PREVIEW_FIELDS = ["subject", "preheader", "layout"];
+    // How long the preview waits after the last change before it is updated.
+    var PREVIEW_DELAY = 800;
+
+    /**
+     * The live preview of `container`: updated now and, through the returned function,
+     * shortly after a change. While the content cannot be rendered, e.g. a template tag is
+     * being typed, the last preview stays, with the error below it.
+     */
+    function livePreview(container, options, getContent, editorInput) {
+        var pane = container.querySelector(".emailtemplates-content-editor__preview");
+        var form = container.closest("form");
+        if (!pane || !form || !options.previewUrl) {
+            return function () {};
+        }
+        var iframe = pane.querySelector("iframe");
+        var errorText = pane.querySelector(".emailtemplates-content-editor__preview-error");
+        var timer = null;
+        var latest = 0;
+
+        function refresh() {
+            var data = new FormData();
+            data.append("content", getContent());
+            data.append("content_editor", editorInput.value);
+            data.append("csrfmiddlewaretoken", form.elements.csrfmiddlewaretoken.value);
+            PREVIEW_FIELDS.forEach(function (name) {
+                if (form.elements[name]) {
+                    data.append(name, form.elements[name].value);
+                }
+            });
+            var request = ++latest;
+            fetch(options.previewUrl, {method: "POST", body: data, credentials: "same-origin"})
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (result) {
+                    if (request !== latest) {
+                        return;  // a newer preview is on its way
+                    }
+                    errorText.textContent = result.error ? options.previewError + " " + result.error : "";
+                    if (!result.error) {
+                        iframe.srcdoc = result.html;
+                    }
+                });
+        }
+
+        function schedule() {
+            clearTimeout(timer);
+            timer = setTimeout(refresh, PREVIEW_DELAY);
+        }
+
+        form.addEventListener("input", function (event) {
+            if (PREVIEW_FIELDS.indexOf(event.target.name) !== -1) {
+                schedule();
+            }
+        });
+        form.addEventListener("change", function (event) {
+            if (PREVIEW_FIELDS.indexOf(event.target.name) !== -1) {
+                schedule();
+            }
+        });
+        refresh();
+        return schedule;
+    }
+
     function ContentEditor(container) {
         var options = JSON.parse(container.dataset.contentEditor);
         var textarea = container.querySelector("textarea");
@@ -147,9 +216,21 @@
         var buttons = container.querySelectorAll("[data-editor]");
         var problemText = container.querySelector(".emailtemplates-content-editor__problem");
         var codeMirror = null;
+        var updatePreview = function () {};
+
+        function getContent() {
+            var editor = window.tinymce && tinymce.get(textarea.id);
+            if (editor && editor.initialized) {
+                return editor.getContent();
+            }
+            return codeMirror ? codeMirror.getValue() : textarea.value;
+        }
 
         function startCode() {
             codeMirror = CodeMirror.fromTextArea(textarea, options.code);
+            codeMirror.on("change", function () {
+                updatePreview();
+            });
         }
 
         function stopCode() {
@@ -164,7 +245,11 @@
             tinymce.init(Object.assign({}, options.richText, {
                 target: textarea,
                 noneditable_regexp: [TEMPLATE_TAG_RE]
-            }));
+            })).then(function (editors) {
+                editors[0].on("input change undo redo ExecCommand", function () {
+                    updatePreview();
+                });
+            });
         }
 
         function stopRichText() {
@@ -203,6 +288,7 @@
                 startCode();
             }
             show(name);
+            updatePreview();
         }
 
         buttons.forEach(function (button) {
@@ -216,6 +302,7 @@
             startCode();
         }
         show(container.dataset.start, container.dataset.problem);
+        updatePreview = livePreview(container, options, getContent, editorInput);
     }
 
     function init() {

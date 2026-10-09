@@ -18,7 +18,11 @@ from .models import (
     MassEmailAttachment,
     MassEmailMessage,
 )
-from .views import EmailTemplateBlocksView, EmailTemplateDefaultVersionView
+from .views import (
+    EmailTemplateBlocksView,
+    EmailTemplateDefaultVersionView,
+    EmailTemplatePreviewView,
+)
 
 
 class EmailLayoutAdmin(admin.ModelAdmin):
@@ -158,8 +162,10 @@ class EmailTemplateAdmin(admin.ModelAdmin):
 
     def get_urls(self):
         """
-        Adds the comparison with the default version and the blocks rendered for the rich
-        text editor, see `EmailTemplateDefaultVersionView` and `EmailTemplateBlocksView`.
+        Adds the comparison with the default version, the blocks rendered for the rich text
+        editor and the live preview next to the editor, see
+        `EmailTemplateDefaultVersionView`, `EmailTemplateBlocksView` and
+        `EmailTemplatePreviewView`.
         """
         opts = self.model._meta
 
@@ -173,6 +179,7 @@ class EmailTemplateAdmin(admin.ModelAdmin):
         return [
             url(EmailTemplateDefaultVersionView, "default"),
             url(EmailTemplateBlocksView, "blocks"),
+            url(EmailTemplatePreviewView, "preview"),
         ] + super(EmailTemplateAdmin, self).get_urls()
 
 

@@ -19,6 +19,8 @@ from django.views import View
 from emailtemplates.email import finalize_html
 from emailtemplates.models import EmailLayout, EmailTemplate, MassEmailMessage
 from emailtemplates.registry import email_templates
+from emailtemplates.rich_text import unescape_template_tags
+from emailtemplates.widgets import EmailContentEditor
 
 
 def get_preview_context(email_template):
@@ -221,6 +223,42 @@ class EmailTemplateBlocksView(EmailTemplateAdminView):
             except Exception as e:
                 blocks[block.name] = format_html('<p style="color:red">{}</p>', e)
         return JsonResponse(blocks)
+
+
+class EmailTemplatePreviewView(EmailTemplateAdminView):
+    """
+    The live preview next to the editor: the email as it would be sent with the content,
+    the subject, the preheader and the layout posted from the form - not saved - filled
+    with the example context, as JSON ``{"html": ...}``, or ``{"error": ...}`` when it
+    cannot be rendered, e.g. while a template tag is being typed.
+    """
+
+    permission = "view"
+
+    def post(self, request, object_id):
+        try:
+            return JsonResponse({"html": render_preview(self.get_email_template())})
+        except Exception as e:
+            return JsonResponse({"error": str(e)})
+
+    def get_email_template(self):
+        """
+        The email template with the values of the form, not saved.
+        """
+        data = self.request.POST
+        email_template = copy.copy(self.object)
+        email_template.content = data.get("content", "")
+        if EmailContentEditor.submitted_editor(data, "content") == "rich":
+            email_template.content = unescape_template_tags(email_template.content)
+        email_template.subject = data.get("subject", email_template.subject)
+        email_template.preheader = data.get("preheader", email_template.preheader)
+        layout_id = data.get("layout", "")
+        email_template.layout = (
+            EmailLayout.objects.filter(pk=layout_id).first()
+            if layout_id.isdigit()
+            else None
+        )
+        return email_template
 
 
 def diff_rows(current, default):

@@ -126,6 +126,7 @@ class EmailTemplateAdminForm(forms.ModelForm):
             self.fields["content"].widget = EmailContentEditor(
                 rich_text_config=self.get_rich_text_config(),
                 rich_text_problem=rich_text_problem(self.instance.content),
+                preview_url=self.get_admin_url("preview"),
             )
         else:
             self.fields["content"].widget = forms.HiddenInput()
@@ -144,17 +145,17 @@ class EmailTemplateAdminForm(forms.ModelForm):
             variables=self.get_variables(),
             blocks=self.get_blocks(),
             styles=layout.styles if layout else "",
-            blocks_url=self.get_blocks_url(),
+            blocks_url=self.get_admin_url("blocks"),
         )
 
-    def get_blocks_url(self):
+    def get_admin_url(self, name):
         """
-        URL of the blocks of this template rendered with example data, see
-        `emailtemplates.views.EmailTemplateBlocksView`.
+        URL of an admin view of this template added by `EmailTemplateAdmin.get_urls()`:
+        "blocks" (rendered with example data) or "preview" (the live preview).
         """
         try:
             return reverse(
-                "admin:emailtemplates_emailtemplate_blocks", args=[self.instance.pk]
+                "admin:emailtemplates_emailtemplate_%s" % name, args=[self.instance.pk]
             )
         except NoReverseMatch:  # the admin is registered on another site
             return ""

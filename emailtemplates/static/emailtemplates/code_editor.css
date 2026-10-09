@@ -68,9 +68,58 @@
 }
 
 /* EmailContentEditor: the buttons switching between the rich text and the HTML code editor */
+/* The whole width of the form row for the editor and the preview, also where the admin
+   theme puts the field into a narrow grid column, e.g. col-sm-7 of django-jazzmin */
+:has(> .emailtemplates-content-editor) {
+    flex: 1 1 100%;
+    max-width: 100%;
+}
+
 .emailtemplates-content-editor {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
     flex: 1 1 auto;
     min-width: 0;
+}
+
+/* the editor and the live preview side by side, the preview below on narrow screens */
+/* the width of the rich text editor, when set in pixels, or 480px; with the preview next to
+   it when both fit, the preview below otherwise */
+.emailtemplates-content-editor__editor {
+    flex: 1 1 var(--emailtemplates-editor-width, 480px);
+    min-width: 0;
+}
+
+/* never wider than its column, even with a fixed "width" in EMAILTEMPLATES_RICH_TEXT_CONFIG,
+   which would run the editor into the preview next to it */
+.emailtemplates-content-editor__editor .tox-tinymce,
+.emailtemplates-content-editor__editor .CodeMirror {
+    max-width: 100%;
+}
+
+.emailtemplates-content-editor__preview {
+    flex: 1 1 420px;
+    min-width: 0;
+}
+
+.emailtemplates-content-editor__preview-title {
+    margin-bottom: 6px;
+    color: var(--body-quiet-color, #666);
+}
+
+.emailtemplates-content-editor__preview iframe {
+    display: block;
+    width: 100%;
+    height: 760px;
+    border: 1px solid var(--border-color, #ced4da);
+    border-radius: 4px;
+    background: #fff;
+}
+
+.emailtemplates-content-editor__preview-error {
+    margin-top: 6px;
+    color: var(--error-fg, #ba2121);
 }
 
 .emailtemplates-content-editor__switch {

@@ -1,13 +1,17 @@
 # coding=utf-8
 import json
+import re
 
 from django import forms
+from django.utils.translation import gettext_lazy as _
 
 from emailtemplates.rich_text import (
     EXTENDS_PROBLEM,
     MISPLACED_PROBLEM,
     tinymce_js_url,
 )
+
+PREVIEW_ERROR = _("The preview could not be updated:")
 
 
 class CodeEditorTextarea(forms.Textarea):
@@ -80,6 +84,8 @@ class EmailContentEditor(CodeEditorTextarea):
     the content is edited as HTML code only.
     `rich_text_problem` - why the content would not survive the rich text editor, which
     then starts as the HTML code editor and cannot be switched to rich text.
+    `preview_url` - URL rendering the email as it would be sent, shown next to the editor
+    and updated while the content is edited, see `EmailTemplatePreviewView`.
 
     The editor the submitted content comes from is sent as ``<name>_editor``, see
     `submitted_editor()`.
@@ -87,7 +93,9 @@ class EmailContentEditor(CodeEditorTextarea):
 
     template_name = "emailtemplates/widgets/content_editor.html"
 
-    def __init__(self, rich_text_config=None, rich_text_problem="", attrs=None):
+    def __init__(
+        self, rich_text_config=None, rich_text_problem="", preview_url="", attrs=None
+    ):
         super(EmailContentEditor, self).__init__(
             attrs=dict({"rows": 24}, **attrs or {})
         )
@@ -95,6 +103,7 @@ class EmailContentEditor(CodeEditorTextarea):
         self.code_editor_options = self.attrs.pop("data-code-editor")
         self.rich_text_config = rich_text_config
         self.rich_text_problem = rich_text_problem
+        self.preview_url = preview_url
 
     def get_context(self, name, value, attrs):
         context = super(EmailContentEditor, self).get_context(name, value, attrs)
@@ -103,10 +112,14 @@ class EmailContentEditor(CodeEditorTextarea):
             "rich_text": rich_text,
             "start": "rich" if rich_text and not self.rich_text_problem else "html",
             "problem": self.rich_text_problem,
+            "preview_url": self.preview_url,
+            "width": self.get_editor_width(),
             "options": json.dumps(
                 {
                     "code": json.loads(self.code_editor_options),
                     "richText": self.rich_text_config,
+                    "previewUrl": self.preview_url,
+                    "previewError": str(PREVIEW_ERROR),
                     "problems": {
                         "extends": str(EXTENDS_PROBLEM),
                         "misplaced": str(MISPLACED_PROBLEM),
@@ -115,6 +128,20 @@ class EmailContentEditor(CodeEditorTextarea):
             ),
         }
         return context
+
+    def get_editor_width(self):
+        """
+        The width in pixels set for the rich text editor (``"width": 1000`` or ``"1000px"`` in
+        EMAILTEMPLATES_RICH_TEXT_CONFIG): the least width of the editor column, so that the
+        preview goes below the editor when both do not fit side by side. None otherwise,
+        e.g. for ``"100%"``.
+        """
+        width = (self.rich_text_config or {}).get("width")
+        if isinstance(width, (int, float)) and not isinstance(width, bool):
+            return int(width)
+        if isinstance(width, str) and re.fullmatch(r"\s*\d+(\.\d+)?\s*px\s*", width):
+            return int(float(width.strip()[:-2]))
+        return None
 
     @staticmethod
     def submitted_editor(data, name):

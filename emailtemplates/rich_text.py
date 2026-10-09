@@ -62,6 +62,9 @@ MISPLACED_PROBLEM = gettext_lazy(
 # (most email clients block them), formatting as inline styles, URLs kept as typed.
 RICH_TEXT_CONFIG = {
     "height": 500,
+    # the width of the editor column, which changes with the window; TinyMCE would keep
+    # the width of the textarea it replaces and run into the preview next to it
+    "width": "100%",
     "menubar": False,
     "branding": False,
     "promotion": False,

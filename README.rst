@@ -278,13 +278,15 @@ Previews
 * *Show layout preview* on a layout renders the header, the footer and the styles with a
   placeholder in place of the email content. It has no context, so variables used in the
   header or the footer render empty.
+* Next to the content editor of an email template, a live preview shows the email as it
+  would be sent - in its layout, with the example context and the inlined CSS - with the
+  content, subject, preheader and layout of the form, not saved yet. It is updated shortly
+  after each change; while the content cannot be rendered (e.g. a template tag is being
+  typed) the last preview stays, with the error below it.
 
-Both previews work on saved data, so save the template after picking a layout to see the
-whole email.
-
-There is deliberately no live preview while typing. The parts of a layout only render
-correctly together - a header that opens the tags its footer closes is broken HTML on its
-own - so a per-field preview reports errors that are not there.
+The first two previews work on saved data. There is no live preview of a layout: its parts
+only render correctly together - a header that opens the tags its footer closes is broken
+HTML on its own - so a per-field preview reports errors that are not there.
 
 Editor
 ------
@@ -331,6 +333,11 @@ for its website, so only ``license_key``, ``language`` and ``directionality`` ar
 from it. ``EMAILTEMPLATES_RICH_TEXT_CONFIG`` overrides any option, e.g.::
 
     EMAILTEMPLATES_RICH_TEXT_CONFIG = {"license_key": "gpl", "height": 700}
+
+The live preview stands next to the editor when both fit, below it otherwise. The editor
+takes at least 480px, or the ``width`` in pixels set in ``EMAILTEMPLATES_RICH_TEXT_CONFIG``
+(e.g. ``"width": 1000``): a wider editor moves the preview below it on narrower screens.
+The editor is never wider than its column, so it never runs into the preview.
 
 The content is shown in the editor with the ``styles`` of the email layout of the
 template. Classes of the layout, e.g. of a button, can be offered as TinyMCE
@@ -436,6 +443,8 @@ Changelog
 * Layouts may be whole HTML documents: the styles go before ``</head>`` of the header.
 * ``preview_context`` of ``register()``: context of the admin preview, e.g. with model
   instances.
+* Live preview of the email next to the content editor, updated while editing, before
+  saving.
 * Default versions: email templates keep a snapshot of their template file; the admin
   shows when developers changed it, compares both versions side by side and lets Site
   Admins replace the content with the new default version, or restore the replaced
