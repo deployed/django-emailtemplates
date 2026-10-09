@@ -8,10 +8,10 @@ from django.test import TestCase, override_settings
 from django.utils.html import escape
 from mock import Mock
 
-from ..email import EmailFromTemplate
+from ..email import EmailFromTemplate, RenderedEmail
 from ..email import logger as email_logger
-from ..models import EmailTemplate, EmailAttachment
-from ..registry import email_templates, NotRegistered, EmailTemplateRegistry
+from ..models import EmailAttachment, EmailLayout, EmailTemplate
+from ..registry import EmailTemplateRegistry, NotRegistered, email_templates
 
 
 class CheckEmail(TestCase):
@@ -22,9 +22,9 @@ class CheckEmail(TestCase):
         self.assertTrue(len(mail.outbox) > 0)
         msg = mail.outbox[0]
         self.assertTrue(settings.DEFAULT_FROM_EMAIL in msg.from_email)
-        self.assertEqual(msg.content_subtype, "html")
         self.assertEqual(msg.subject, eft.subject)
-        self.assertEqual(msg.body, eft.message)
+        self.assertEqual(msg.body, eft.text)
+        self.assertEqual(msg.alternatives, [(eft.message, "text/html")])
         self.assertTrue("Message-Id" in msg.message())
         self.assertEqual(msg.to, to)
         self.assertEqual(msg.reply_to, reply_to)
@@ -149,6 +149,16 @@ class EmailFromTemplateWithFixturesTest(CheckEmail):
         eft.get_object()
         self.assertEqual(eft.subject, "default email title - hi Lucas")
 
+    def test_subject_is_not_html_escaped(self):
+        eft = EmailFromTemplate(
+            name="support_respond.html",
+            language=self.language,
+            registry_validation=False,
+        )
+        eft.context = {"user_name": 'Tom & "Jerry" <3'}
+        eft.get_object()
+        self.assertEqual(eft.subject, 'Hi Tom & "Jerry" <3')
+
     def test_friends_invitation_no_database_or_filesystem_template(self):
         eft = EmailFromTemplate(registry_validation=False)
         eft.context = {
@@ -168,3 +178,77 @@ class EmailFromTemplateWithFixturesTest(CheckEmail):
         self.assertEqual(eft.template_source, "default")
         eft.send_email(to)
         self.check_email_was_sent(eft, to)
+
+
+class EmailFromTemplateRenderTest(TestCase):
+    def setUp(self):
+        mail.outbox = []
+        layout = EmailLayout.objects.create(
+            name="Standard",
+            header_content="<table><tr><td><h1>{{ site_name }}</h1>",
+            footer_content="<p>Sent by {{ site_name }}</p></td></tr></table>",
+            styles="p { color: red; }",
+        )
+        EmailTemplate.objects.create(
+            title="welcome.html",
+            language="pl",
+            subject="Welcome {{ first_name }}",
+            content='<p>Hello {{ first_name }}, <a href="{{ url }}">activate</a>.</p>',
+            layout=layout,
+        )
+
+    def get_eft(self):
+        eft = EmailFromTemplate(
+            name="welcome.html", language="pl", registry_validation=False
+        )
+        eft.context.update(
+            {"first_name": "Anna", "site_name": "Example", "url": "https://x.pl/a/"}
+        )
+        return eft
+
+    def test_render_returns_subject_html_and_text(self):
+        rendered = self.get_eft().render()
+        self.assertIsInstance(rendered, RenderedEmail)
+        self.assertEqual(rendered.subject, "Welcome Anna")
+        self.assertIn(
+            '<p>Hello Anna, <a href="https://x.pl/a/">activate</a>.</p>', rendered.html
+        )
+        self.assertEqual(
+            rendered.text,
+            "Example\n\nHello Anna, [activate](https://x.pl/a/).\n\nSent by Example",
+        )
+
+    def test_render_sends_nothing(self):
+        self.get_eft().render()
+        self.assertEqual(mail.outbox, [])
+
+    def test_email_is_sent_as_text_with_html_alternative(self):
+        eft = self.get_eft()
+        eft.send(["to@example.com"])
+        msg = mail.outbox[0]
+        self.assertEqual(msg.subject, "Welcome Anna")
+        self.assertEqual(msg.body, eft.text)
+        self.assertEqual(msg.content_subtype, "plain")
+        self.assertEqual(msg.alternatives, [(eft.message, "text/html")])
+
+
+class FileTemplateSubjectTest(TestCase):
+    def setUp(self):
+        self.registry = EmailTemplateRegistry()
+        self.registry.register("file_subject.html", subject="Welcome {{ name }}")
+        patcher = mock.patch("emailtemplates.email.email_templates", self.registry)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def get_object(self, **kwargs):
+        eft = EmailFromTemplate(name="file_subject.html", language="pl", **kwargs)
+        eft.context["name"] = "Tom & Jerry"
+        eft.get_object()
+        return eft
+
+    def test_subject_of_the_registration_is_used(self):
+        self.assertEqual(self.get_object().subject, "Welcome Tom & Jerry")
+
+    def test_subject_passed_to_the_constructor_takes_precedence(self):
+        eft = self.get_object(subject="Hi {{ name }}")
+        self.assertEqual(eft.subject, "Hi Tom & Jerry")

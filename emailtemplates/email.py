@@ -3,18 +3,57 @@ import logging
 import os
 import re
 from smtplib import SMTPException
+from typing import NamedTuple
 from urllib.parse import urljoin
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
-from django.core.mail import EmailMessage
-from django.template import Template, Context, TemplateDoesNotExist
+from django.core.mail import EmailMultiAlternatives
+from django.template import Context, Template, TemplateDoesNotExist
 from django.template.loader import get_template
 
-from .models import now, EmailTemplate
+from .models import EmailTemplate, now
 from .registry import email_templates
+from .text import html_to_text
+
+try:
+    import css_inline
+except ImportError:  # optional, see `inline_css()` and the check of the setting
+    css_inline = None
 
 logger = logging.getLogger(__name__)
+
+
+def inline_css_enabled():
+    return getattr(settings, "EMAILTEMPLATES_INLINE_CSS", False)
+
+
+def inline_css(html):
+    """
+    Moves the CSS of the <style> tags of an email into the `style` attributes of its
+    elements, as many email clients ignore <style> tags. Media queries are kept in a
+    <style> tag, styles set on an element take precedence.
+
+    Requires css-inline: ``pip install django-emailtemplates[inline]``.
+    """
+    return css_inline.inline(html, keep_at_rules=True, load_remote_stylesheets=False)
+
+
+def finalize_html(html):
+    """
+    Rendered HTML of an email as it is sent, see `EMAILTEMPLATES_INLINE_CSS`.
+    """
+    return inline_css(html) if inline_css_enabled() else html
+
+
+class RenderedEmail(NamedTuple):
+    """
+    Email ready to be sent: the subject, the HTML body and its plain text version.
+    """
+
+    subject: str
+    html: str
+    text: str
 
 
 class EmailFromTemplate(object):
@@ -57,6 +96,7 @@ class EmailFromTemplate(object):
         self.template_class = template_class
         self.template_object = template_object
         self.subject = subject
+        self.preheader = ""
         self.language = language
         self.name = name
         self.base_url = base_url or getattr(settings, "BASE_URL", "")
@@ -65,8 +105,8 @@ class EmailFromTemplate(object):
         self.compiled_template = None  # for storing compiled template
         self.context = {"date": now()}  # default context
         self.sent = 0  # number of messages sent
-        self.message = ""
-        self.content_subtype = "html"
+        self.message = ""  # HTML body
+        self.text = ""  # plain text body, generated from the HTML one
         self._template_source = "default"
 
     @property
@@ -108,9 +148,27 @@ class EmailFromTemplate(object):
         return self.template_class.objects.get(title=self.name, language=self.language)
 
     def get_subject(self, template):
-        subject_template = str(template.subject) or self.subject
-        subject = Template(subject_template).render(Context(self.get_context()))
-        return subject
+        return self.render_subject(str(template.subject) or self.subject)
+
+    def get_default_subject(self):
+        """
+        Subject of an email whose template comes from a file: the one passed to the
+        constructor, or the one of the registration.
+        """
+        if self.subject or not email_templates.is_registered(self.name):
+            return self.subject
+        return str(email_templates.get_subject(self.name))
+
+    def render_subject(self, subject_template):
+        """
+        Renders plain text, the subject or the preheader: without HTML escaping, which
+        would show "Tom &amp; Jerry" to the reader, and as a plain `str`, not marked safe,
+        so that {{ subject }} in an HTML template is escaped.
+        """
+        rendered = Template(subject_template).render(
+            Context(self.get_context(), autoescape=False)
+        )
+        return str.__str__(rendered)
 
     def get_object(self):
         while True:
@@ -133,11 +191,17 @@ class EmailFromTemplate(object):
                     tmp.get_content() if hasattr(tmp, "get_content") else tmp.content
                 )
                 self.subject = self.get_subject(tmp)
+                self.preheader = self.render_subject(getattr(tmp, "preheader", ""))
                 self._template_source = "database"
                 logger.debug("Got template %s from database", self.name)
                 return
         # fallback
         self.__get_template_from_file()
+        self.subject = self.render_subject(self.get_default_subject())
+        if email_templates.is_registered(self.name):
+            self.preheader = self.render_subject(
+                str(email_templates.get_preheader(self.name))
+            )
 
     def __compile_template(self):
         if not self.compiled_template:
@@ -147,16 +211,31 @@ class EmailFromTemplate(object):
         self.context.update(
             {"default_attachments": self.get_default_attachments(as_links=True)}
         )
+        self.context.update(email_templates.get_blocks_context(self.name, self.context))
         return self.context
 
     def render_message(self):
         self.__compile_template()
+        # for the layout, e.g. <title>{{ subject }}</title>
+        self.context.setdefault("subject", self.subject)
+        self.context.setdefault("preheader", self.preheader)
         try:
             message = self.compiled_template.render(self.get_context())  #
         except AttributeError:
             # NOTE: for template from string Context() is still required!
             message = self.compiled_template.render(Context(self.get_context()))
-        self.message = message
+        self.message = finalize_html(message)
+        self.text = html_to_text(self.message)
+
+    def render(self):
+        """
+        Loads the template and renders it with `self.context`, without sending anything.
+
+        For sending the email some other way, e.g. through a mail queue.
+        """
+        self.get_object()
+        self.render_message()
+        return RenderedEmail(self.subject, self.message, self.text)
 
     def get_message_object(self, send_to, attachment_paths, *args, **kwargs):
         if kwargs.get("reply_to") is None:
@@ -164,9 +243,10 @@ class EmailFromTemplate(object):
             if defaut_reply_to_email:
                 kwargs["reply_to"] = [defaut_reply_to_email]
 
-        msg = EmailMessage(
-            self.subject, self.message, self.from_email, send_to, *args, **kwargs
+        msg = EmailMultiAlternatives(
+            self.subject, self.text, self.from_email, send_to, *args, **kwargs
         )
+        msg.attach_alternative(self.message, "text/html")
         if attachment_paths:
             for path in attachment_paths:
                 msg.attach_file(path)
@@ -186,7 +266,6 @@ class EmailFromTemplate(object):
         @return: number of sent messages
         """
         msg = self.get_message_object(send_to, attachment_paths, *args, **kwargs)
-        msg.content_subtype = self.content_subtype
 
         try:
             self.sent = msg.send()
@@ -236,8 +315,7 @@ class EmailFromTemplate(object):
         attachments = self.get_default_attachments(as_links=False)
         attachments.extend(kwargs.pop("attachments", []))
 
-        self.get_object()
-        self.render_message()
+        self.render()
         self.send_email(to, attachment_paths, attachments=attachments, *args, **kwargs)
         if self.sent:
             logger.info("Mail has been sent to: %s ", to)

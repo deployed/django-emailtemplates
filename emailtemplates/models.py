@@ -3,13 +3,15 @@ import logging
 import os
 import re
 
+from django.apps import apps
 from django.conf import settings
 from django.db import models
+from django.template import TemplateDoesNotExist
 from django.utils import translation
 from django.utils.translation import gettext_lazy as _
 
 from emailtemplates.helpers import TemplateSourceLoader, mass_mailing_recipients
-from emailtemplates.registry import email_templates, NotRegistered
+from emailtemplates.registry import NotRegistered, email_templates
 
 try:
     from django.utils.timezone import now
@@ -23,6 +25,25 @@ logger = logging.getLogger(__name__)
 # `{% extends %}` must be the very first tag of a template, so content using it cannot be
 # wrapped in a layout. Such content is left untouched, see `EmailTemplate.get_content()`.
 EXTENDS_TAG_RE = re.compile(r"{%\s*extends[\s%]")
+HEAD_END_RE = re.compile(r"</head\s*>", re.IGNORECASE)
+
+
+def rich_text_available():
+    """
+    The rich text editor is opted into with ``EMAILTEMPLATES_RICH_TEXT = True`` and needs
+    django-tinymce, see `emailtemplates.rich_text`. Without it the content is edited as
+    HTML code only, so projects having django-tinymce for other reasons keep that editor.
+    """
+    return getattr(settings, "EMAILTEMPLATES_RICH_TEXT", False) and apps.is_installed(
+        "tinymce"
+    )
+
+
+def _normalize(content):
+    """
+    Content compared regardless of whitespace and line endings.
+    """
+    return " ".join((content or "").split())
 
 
 class EmailLayout(models.Model):
@@ -82,10 +103,17 @@ class EmailLayout(models.Model):
     def wrap_content(self, content):
         """
         Returns given content surrounded by the styles, header and footer of this layout.
+
+        The styles go before the header, or into it, before </head>, when the header is
+        the start of a whole HTML document.
         """
-        return "".join(
-            (self.styles_tag(), self.header_content, content, self.footer_content)
-        )
+        header = self.header_content
+        styles = self.styles_tag()
+        head_end = HEAD_END_RE.search(header)
+        if styles and head_end:
+            header = header[: head_end.start()] + styles + header[head_end.start() :]
+            styles = ""
+        return "".join((styles, header, content, self.footer_content))
 
 
 class EmailTemplate(models.Model):
@@ -103,7 +131,33 @@ class EmailTemplate(models.Model):
         blank=True,
         help_text=_("you can use variables from table"),
     )
+    preheader = models.CharField(
+        _("preheader"),
+        max_length=255,
+        blank=True,
+        help_text=_(
+            "Short text shown by email clients next to the subject in the inbox, available "
+            "to the layout as {{ preheader }}. You can use variables from table."
+        ),
+    )
     content = models.TextField(_("content"))
+    default_content = models.TextField(
+        _("default content"),
+        blank=True,
+        editable=False,
+        help_text=_(
+            "The template file as it was when the content was created or last replaced "
+            "with it. A different file means a new default version is available."
+        ),
+    )
+    previous_content = models.TextField(
+        _("previous content"),
+        blank=True,
+        editable=False,
+        help_text=_(
+            "The content before it was last replaced with the default version."
+        ),
+    )
     layout = models.ForeignKey(
         "EmailLayout",
         verbose_name=_("layout"),
@@ -161,22 +215,80 @@ class EmailTemplate(models.Model):
         loader = TemplateSourceLoader()
         try:
             return loader.get_source(self.title)
+        except TemplateDoesNotExist:
+            # templates may live in the database only, e.g. created in the admin
+            logger.debug("Email template %s has no template file.", self.title)
+            return ""
         except Exception as e:
             logger.error("Error loading template %s. Details: %s ", self.title, e)
             return ""
 
     def get_default_subject(self):
-        translation.activate(self.language)
-        try:
-            return email_templates.get_subject(self.title)
-        except NotRegistered:
-            return ""
+        # the subject of the registration may be translated; in the language of the
+        # template, without switching the language of the rest of the request
+        with translation.override(self.language):
+            try:
+                return str(email_templates.get_subject(self.title))
+            except NotRegistered:
+                return ""
+
+    def get_default_preheader(self):
+        # in the language of the template, like the subject
+        with translation.override(self.language):
+            try:
+                return str(email_templates.get_preheader(self.title))
+            except NotRegistered:
+                return ""
+
+    def has_new_default(self):
+        """
+        Whether the template file changed since the content was made from it: developers
+        updated the default content, which the Site Admin may take over, see
+        `replace_with_default()`. Never applied by itself, the content may be edited.
+
+        False for templates without a snapshot of the file (created before 3.0.0).
+        """
+        if not self.default_content:
+            return False
+        default = self.get_default_content()
+        return bool(default) and _normalize(default) != _normalize(self.default_content)
+
+    def differs_from_default(self):
+        """
+        Whether the content is not the current template file.
+        """
+        default = self.get_default_content()
+        return bool(default) and _normalize(default) != _normalize(self.content)
+
+    def replace_with_default(self):
+        """
+        Takes over the current template file as the content, keeping the content it
+        replaces in `previous_content`, see `restore_previous_content()`.
+        """
+        default = self.get_default_content()
+        self.previous_content = self.content
+        self.content = default
+        self.default_content = default
+        self.save()
+
+    def restore_previous_content(self):
+        """
+        Undoes `replace_with_default()`; the replaced content becomes the previous one.
+        """
+        self.content, self.previous_content = self.previous_content, self.content
+        self.save()
 
     def save(self, *args, **kwargs):
+        if not self.pk and not self.default_content:
+            # the snapshot `has_new_default()` compares the template file with
+            self.default_content = self.get_default_content()
         if not self.content:
             self.content = self.get_default_content()
         if not self.subject:
             self.subject = self.get_default_subject()
+        if not self.pk and not self.preheader:
+            # only for new templates, an empty preheader may be the choice of the admin
+            self.preheader = self.get_default_preheader()
         super(EmailTemplate, self).save(*args, **kwargs)
 
 

@@ -7,10 +7,11 @@ import mock
 from django.core import mail
 from django.core.files import File
 from django.test import TestCase
+from django.utils import translation
 
 from emailtemplates.helpers import TemplateSourceLoader
-from emailtemplates.models import EmailTemplate, MassEmailMessage, MassEmailAttachment
-from emailtemplates.registry import email_templates, NotRegistered
+from emailtemplates.models import EmailTemplate, MassEmailAttachment, MassEmailMessage
+from emailtemplates.registry import NotRegistered, email_templates
 
 
 class EmailTemplateTest(TestCase):
@@ -81,7 +82,10 @@ class MassEmailMessageTest(TestCase):
         self.assertTrue(self.mass_email_message.sent)
         self.assertEqual(mail.outbox[0].to, recipients)
         self.assertEqual(mail.outbox[0].subject, "Temat maila")
-        self.assertEqual(mail.outbox[0].body, "<p>Treść emaila</p>")
+        self.assertEqual(mail.outbox[0].body, "Treść emaila")
+        self.assertEqual(
+            mail.outbox[0].alternatives, [("<p>Treść emaila</p>", "text/html")]
+        )
 
     def test_send_with_attachments(self):
         attachment = MassEmailAttachment.objects.create(
@@ -99,3 +103,43 @@ class MassEmailMessageTest(TestCase):
         self.assertTrue(attachments[0][0].endswith(".txt"))
         self.assertEqual(attachments[0][1], "Some content of example file.")
         self.assertEqual(attachments[0][2], "text/plain")
+
+
+class MissingTemplateFileTest(TestCase):
+    """Templates may live in the database only; the admin asks for their file on every page."""
+
+    @mock.patch("emailtemplates.models.logger")
+    def test_a_missing_file_is_not_logged_as_an_error(self, mock_logger):
+        email_template = EmailTemplate(title="database_only.html", content="<p>Hi</p>")
+        self.assertEqual(email_template.get_default_content(), "")
+        self.assertFalse(email_template.differs_from_default())
+        mock_logger.error.assert_not_called()
+
+    @mock.patch("emailtemplates.models.logger")
+    @mock.patch.object(
+        TemplateSourceLoader, "get_source", mock.Mock(side_effect=ValueError("broken"))
+    )
+    def test_other_errors_are_logged(self, mock_logger):
+        email_template = EmailTemplate(title="broken.html")
+        self.assertEqual(email_template.get_default_content(), "")
+        mock_logger.error.assert_called_once()
+
+
+class DefaultSubjectAndPreheaderLanguageTest(TestCase):
+    @mock.patch.object(email_templates, "get_subject", mock.Mock(return_value="Hi"))
+    def test_the_active_language_is_left_as_it_was(self):
+        with translation.override("en"):
+            EmailTemplate(title="any.html", language="pl").get_default_subject()
+            self.assertEqual(translation.get_language(), "en")
+
+    @mock.patch.object(email_templates, "get_preheader")
+    def test_the_preheader_is_in_the_language_of_the_template(self, get_preheader):
+        get_preheader.return_value = mock.Mock(
+            __str__=lambda self: translation.get_language()
+        )
+        with translation.override("en"):
+            preheader = EmailTemplate(
+                title="any.html", language="pl"
+            ).get_default_preheader()
+            self.assertEqual(preheader, "pl")
+            self.assertEqual(translation.get_language(), "en")

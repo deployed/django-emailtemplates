@@ -8,6 +8,7 @@ os.chdir(os.path.normpath(os.path.join(os.path.abspath(__file__), os.pardir)))
 
 install_requires = [
     'Django>=4.0',
+    'inscriptis>=2.0',  # the plain text version of emails, see emailtemplates.text
 ]
 
 tests_require = [
@@ -16,7 +17,7 @@ tests_require = [
 
 setup(
     name='django-emailtemplates',
-    version='2.0.0',
+    version='3.0.0',
     packages=find_packages(),
     package_data={'emailtemplates': ['locale/*/LC_MESSAGES/*.po', 'locale/*/LC_MESSAGES/*.mo']},
     include_package_data=True,
@@ -42,5 +43,9 @@ setup(
     ],
     python_requires='>=3.10',
     install_requires=install_requires,
+    extras_require={
+        'tinymce': ['django-tinymce>=4.0'],  # bundles TinyMCE 6+, whose API content_editor.js uses
+        'inline': ['css-inline>=0.17'],  # keep_at_rules
+    },
     tests_require=tests_require
 )

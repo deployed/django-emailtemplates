@@ -1,0 +1,15 @@
+{% load i18n %}
+<div class="emailtemplates-content-editor"
+     data-content-editor="{{ editor.options }}"
+     data-start="{{ editor.start }}"
+     data-problem="{{ editor.problem }}">
+  {% if editor.rich_text %}
+    <div class="emailtemplates-content-editor__switch">
+      <button type="button" class="button" data-editor="rich">{% translate "Rich text" %}</button>
+      <button type="button" class="button" data-editor="html">{% translate "HTML code" %}</button>
+      <span class="emailtemplates-content-editor__problem"></span>
+    </div>
+  {% endif %}
+  <input type="hidden" name="{{ widget.name }}_editor" value="{{ editor.start }}">
+  {% include "django/forms/widgets/textarea.html" %}
+</div>

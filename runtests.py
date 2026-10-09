@@ -1,3 +1,4 @@
+import os
 import sys
 
 import django
@@ -13,11 +14,12 @@ if __name__ == "__main__":
         "django.contrib.sessions",
         "django.contrib.admin",
         "django.contrib.messages",
+        "tinymce",
         "emailtemplates",
     )
     settings.MIDDLEWARE = (
-        "django.contrib.auth.middleware.AuthenticationMiddleware",
         "django.contrib.sessions.middleware.SessionMiddleware",
+        "django.contrib.auth.middleware.AuthenticationMiddleware",
         "django.contrib.messages.middleware.MessageMiddleware",
     )
     settings.DATABASES = {
@@ -26,11 +28,20 @@ if __name__ == "__main__":
             "NAME": ":memory:",
         }
     }
+    settings.STATIC_URL = "/static/"
+    settings.ROOT_URLCONF = "emailtemplates.tests.urls"
     settings.TEMPLATES = [
         {
             "BACKEND": "django.template.backends.django.DjangoTemplates",
+            "APP_DIRS": True,
+            "DIRS": [
+                os.path.join(
+                    os.path.dirname(__file__), "emailtemplates", "tests", "templates"
+                )
+            ],
             "OPTIONS": {
                 "context_processors": [
+                    "django.template.context_processors.request",
                     "django.contrib.auth.context_processors.auth",
                     "django.contrib.messages.context_processors.messages",
                 ],

@@ -66,3 +66,31 @@
 .email-frame__divider::after {
     margin-left: 12px;
 }
+
+/* EmailContentEditor: the buttons switching between the rich text and the HTML code editor */
+.emailtemplates-content-editor {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.emailtemplates-content-editor__switch {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.emailtemplates-content-editor__switch .button[aria-pressed="true"] {
+    background: var(--default-button-bg, #205067);
+    color: var(--button-fg, #fff);
+}
+
+.emailtemplates-content-editor__switch .button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.emailtemplates-content-editor__problem {
+    color: var(--error-fg, #ba2121);
+}

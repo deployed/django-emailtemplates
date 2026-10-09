@@ -3,6 +3,12 @@ import json
 
 from django import forms
 
+from emailtemplates.rich_text import (
+    EXTENDS_PROBLEM,
+    MISPLACED_PROBLEM,
+    tinymce_js_url,
+)
+
 
 class CodeEditorTextarea(forms.Textarea):
     """
@@ -63,3 +69,67 @@ class EmailFrameWidget(forms.MultiWidget):
 
     def decompress(self, value):
         return list(value) if value else ["", ""]
+
+
+class EmailContentEditor(CodeEditorTextarea):
+    """
+    Content of an email template, edited as rich text or as HTML code, switched with the
+    buttons above the editor without saving (``content_editor.js``).
+
+    `rich_text_config` - TinyMCE configuration, see `emailtemplates.rich_text`; without it
+    the content is edited as HTML code only.
+    `rich_text_problem` - why the content would not survive the rich text editor, which
+    then starts as the HTML code editor and cannot be switched to rich text.
+
+    The editor the submitted content comes from is sent as ``<name>_editor``, see
+    `submitted_editor()`.
+    """
+
+    template_name = "emailtemplates/widgets/content_editor.html"
+
+    def __init__(self, rich_text_config=None, rich_text_problem="", attrs=None):
+        super(EmailContentEditor, self).__init__(
+            attrs=dict({"rows": 24}, **attrs or {})
+        )
+        # the code editor is started by content_editor.js, not by code_editor.js
+        self.code_editor_options = self.attrs.pop("data-code-editor")
+        self.rich_text_config = rich_text_config
+        self.rich_text_problem = rich_text_problem
+
+    def get_context(self, name, value, attrs):
+        context = super(EmailContentEditor, self).get_context(name, value, attrs)
+        rich_text = self.rich_text_config is not None
+        context["editor"] = {
+            "rich_text": rich_text,
+            "start": "rich" if rich_text and not self.rich_text_problem else "html",
+            "problem": self.rich_text_problem,
+            "options": json.dumps(
+                {
+                    "code": json.loads(self.code_editor_options),
+                    "richText": self.rich_text_config,
+                    "problems": {
+                        "extends": str(EXTENDS_PROBLEM),
+                        "misplaced": str(MISPLACED_PROBLEM),
+                    },
+                }
+            ),
+        }
+        return context
+
+    @staticmethod
+    def submitted_editor(data, name):
+        """
+        "rich" or "html": the editor the submitted content of the field `name` comes from.
+        """
+        return "rich" if data.get("%s_editor" % name) == "rich" else "html"
+
+    @property
+    def media(self):
+        js = list(CodeEditorTextarea.Media.js)
+        js.remove("emailtemplates/code_editor.js")
+        if self.rich_text_config is not None:
+            js.insert(0, tinymce_js_url())
+        return forms.Media(
+            css=CodeEditorTextarea.Media.css,
+            js=js + ["emailtemplates/content_editor.js"],
+        )
