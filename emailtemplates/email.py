@@ -1,7 +1,9 @@
 # coding=utf-8
+import base64
 import logging
 import os
 import re
+from dataclasses import asdict
 from smtplib import SMTPException
 from typing import NamedTuple
 from urllib.parse import urljoin
@@ -9,10 +11,12 @@ from urllib.parse import urljoin
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import EmailMultiAlternatives
+from django.db import transaction
 from django.template import Context, Template, TemplateDoesNotExist
 from django.template.loader import get_template
 
-from .models import EmailTemplate, now
+from .managers import EmailContent
+from .models import EmailLog, EmailTemplate, now
 from .registry import email_templates
 from .text import html_to_text
 
@@ -44,6 +48,107 @@ def finalize_html(html):
     Rendered HTML of an email as it is sent, see `EMAILTEMPLATES_INLINE_CSS`.
     """
     return inline_css(html) if inline_css_enabled() else html
+
+
+def celery_enabled():
+    return getattr(settings, "EMAILTEMPLATES_CELERY", False)
+
+
+def message_attachments(message):
+    """
+    The attachments of `message` as (filename, content, mimetype) triples, MIME parts
+    included, so that they can be attached to the email again, see `EmailLog.get_message()`.
+    """
+    attachments = []
+    for attachment in message.attachments:
+        if isinstance(attachment, tuple):
+            attachments.append(tuple(attachment))
+        else:  # a MIME part, e.g. attached with message.attach(mime_part)
+            attachments.append(
+                (
+                    attachment.get_filename(),
+                    attachment.get_payload(decode=True),
+                    attachment.get_content_type(),
+                )
+            )
+    return attachments
+
+
+def encode_attachments(attachments):
+    """
+    `attachments` as JSON for the Celery task: [filename, base64 content, mimetype] lists.
+    """
+    encoded = []
+    for filename, content, *mimetype in attachments:
+        if isinstance(content, str):
+            content = content.encode("utf-8")
+        encoded.append(
+            [filename, base64.b64encode(content).decode("ascii"), *mimetype[:1]]
+        )
+    return encoded
+
+
+def decode_attachments(encoded):
+    """
+    Reverts `encode_attachments()`.
+    """
+    return [
+        (filename, base64.b64decode(content), *mimetype)
+        for filename, content, *mimetype in encoded
+    ]
+
+
+def deliver_later(email_log, attachments=()):
+    """
+    Sends the email of `email_log` once the current transaction is committed: by the Celery
+    task of `emailtemplates.tasks` with ``EMAILTEMPLATES_CELERY = True``, otherwise right
+    away. `attachments` - (filename, content[, mimetype]) tuples, never saved.
+    """
+    attachments = list(attachments)
+    if celery_enabled():
+        from .tasks import send_email
+
+        encoded = encode_attachments(attachments)
+        transaction.on_commit(lambda: send_email.delay(email_log.pk, encoded))
+    else:
+        transaction.on_commit(lambda: deliver_now(email_log, attachments))
+
+
+def deliver_now(email_log, attachments=()):
+    """
+    Sends the email of `email_log`; an error is recorded in it and logged, not raised.
+    """
+    try:
+        email_log.deliver(attachments)
+    except Exception as e:
+        logger.error("Problem sending email to %s: %s", email_log.recipients, e)
+
+
+def resend(email_log):
+    """
+    Sends a failed email again, as a new entry of the history, see `deliver_later()`. The
+    attachments of its email template are attached again; other attachments are not kept.
+    """
+    email_log = EmailLog.objects.get(pk=email_log.pk)
+    eft = EmailFromTemplate(
+        name=email_log.template,
+        language=email_log.language or settings.LANGUAGE_CODE,
+        registry_validation=False,
+    )
+    attachments = eft.get_default_attachments(as_links=False)
+    email_log.pk = None
+    email_log.status = EmailLog.PENDING
+    email_log.attempts = 0
+    email_log.last_error = ""
+    email_log.sent_at = None
+    email_log.source = email_log.source_id = ""
+    email_log.source_seq = 0
+    email_log.source_context = {}
+    email_log.created = now()
+    email_log.attachments = [filename for filename, content in attachments]
+    email_log.save()
+    deliver_later(email_log, attachments)
+    return email_log
 
 
 class RenderedEmail(NamedTuple):
@@ -247,6 +352,9 @@ class EmailFromTemplate(object):
             self.subject, self.text, self.from_email, send_to, *args, **kwargs
         )
         msg.attach_alternative(self.message, "text/html")
+        # for the history of sent emails, see EmailContent.from_message()
+        msg.email_template = self.name
+        msg.email_language = self.language
         if attachment_paths:
             for path in attachment_paths:
                 msg.attach_file(path)
@@ -320,3 +428,24 @@ class EmailFromTemplate(object):
         if self.sent:
             logger.info("Mail has been sent to: %s ", to)
         return self.sent
+
+    def send_later(self, to, attachment_paths=None, **kwargs):
+        """
+        Like `send()`, but sends the email once the current transaction is committed: in
+        the background, by a Celery task, with ``EMAILTEMPLATES_CELERY = True``, otherwise
+        right away. The email is rendered now, so the context may hold any objects.
+
+        Returns the `EmailLog` of the email, pending until it is sent. A ``connection``
+        cannot be passed, the email is sent by the default mail backend.
+        """
+        attachments = self.get_default_attachments(as_links=False)
+        attachments.extend(kwargs.pop("attachments", []))
+        self.render()
+        msg = self.get_message_object(
+            to, attachment_paths, attachments=attachments, **kwargs
+        )
+        email_log = EmailLog.objects.create(
+            status=EmailLog.PENDING, **asdict(EmailContent.from_message(msg))
+        )
+        deliver_later(email_log, message_attachments(msg))
+        return email_log

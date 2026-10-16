@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 12:30+0200\n"
+"POT-Creation-Date: 2026-10-16 11:50+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,43 +16,41 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && "
-"(n%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && "
-"n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
+"Plural-Forms: nplurals=4; plural=(n==1 ? 0 : (n%10>=2 && n%10<=4) && (n%100<12 || n%100>14) ? 1 : n!=1 && (n%10>=0 && n%10<=1) || (n%10>=5 && n%10<=9) || (n%100>=12 && n%100<=14) ? 2 : 3);\n"
 
-#: admin.py:58
+#: admin.py:65
 msgid "Show layout preview"
 msgstr "Pokaż podgląd layoutu"
 
-#: admin.py:62 admin.py:122
+#: admin.py:69 admin.py:129
 msgid "Actions"
 msgstr "Akcje"
 
-#: admin.py:73
+#: admin.py:80
 msgid "not used"
 msgstr "nieużywany"
 
-#: admin.py:75 models.py:177
+#: admin.py:82 models.py:178
 msgid "Email templates"
 msgstr "Szablony wiadomości"
 
-#: admin.py:84 models.py:301
+#: admin.py:91 models.py:302
 msgid "Attachment"
 msgstr "Załącznik"
 
-#: admin.py:85 models.py:302
+#: admin.py:92 models.py:303
 msgid "Attachments"
 msgstr "Załączniki"
 
-#: admin.py:119
+#: admin.py:126
 msgid "Show email preview"
 msgstr "Pokaż podgląd wiadomości"
 
-#: admin.py:126
+#: admin.py:133
 msgid "New default version"
 msgstr "Nowa wersja domyślna"
 
-#: admin.py:129 admin.py:157
+#: admin.py:136 admin.py:164
 #: templates/admin/emailtemplates/emailtemplate/default_version.html:19
 #: templates/admin/emailtemplates/emailtemplate/default_version.html:27
 #: templates/admin/emailtemplates/emailtemplate/default_version.html:70
@@ -61,7 +59,7 @@ msgstr "Nowa wersja domyślna"
 msgid "Default version"
 msgstr "Wersja domyślna"
 
-#: admin.py:142
+#: admin.py:149
 msgid ""
 "A new default version is available. Your content stays as it is until you "
 "replace it."
@@ -69,19 +67,89 @@ msgstr ""
 "Dostępna jest nowa wersja domyślna. Twoja treść pozostaje bez zmian, dopóki "
 "jej nie podmienisz."
 
-#: admin.py:147
+#: admin.py:154
 #: templates/admin/emailtemplates/emailtemplate/default_version.html:41
 msgid "Your content differs from the default version."
 msgstr "Twoja treść różni się od wersji domyślnej."
 
-#: admin.py:149
+#: admin.py:156
 #: templates/admin/emailtemplates/emailtemplate/default_version.html:43
 msgid "The content is the default version."
 msgstr "Treść jest wersją domyślną."
 
-#: admin.py:154
+#: admin.py:161
 msgid "Compare with the default version"
 msgstr "Porównaj z wersją domyślną"
+
+#: admin.py:256
+msgid "Email"
+msgstr "E-mail"
+
+#: admin.py:271
+msgid "Content"
+msgstr "Treść"
+
+#: admin.py:273
+msgid "Source"
+msgstr "Źródło"
+
+#: admin.py:279
+msgid "Headers"
+msgstr "Nagłówki"
+
+#: admin.py:302 models.py:508
+msgid "recipients"
+msgstr "odbiorcy"
+
+#: admin.py:306 models.py:476
+msgid "status"
+msgstr "status"
+
+#: admin.py:314 admin.py:322 models.py:513
+msgid "HTML"
+msgstr "HTML"
+
+#: admin.py:325
+msgid "send now"
+msgstr "wyślij teraz"
+
+#: admin.py:340
+msgid "Send now"
+msgstr "Wyślij teraz"
+
+#: admin.py:369
+msgid "Send selected emails now"
+msgstr "Wyślij teraz zaznaczone e-maile"
+
+#: admin.py:385
+#, python-format
+msgid "%d email is being sent again."
+msgid_plural "%d emails are being sent again."
+msgstr[0] "%d e-mail jest wysyłany ponownie."
+msgstr[1] "%d e-maile są wysyłane ponownie."
+msgstr[2] "%d e-maili jest wysyłanych ponownie."
+msgstr[3] "%d e-maili jest wysyłanych ponownie."
+
+#: admin.py:396
+#, python-format
+msgid ""
+"%d email was skipped: only failed emails with their content kept can be sent"
+" again."
+msgid_plural ""
+"%d emails were skipped: only failed emails with their content kept can be "
+"sent again."
+msgstr[0] ""
+"%d e-mail pominięto: ponownie można wysłać tylko nieudane e-maile z "
+"zachowaną treścią."
+msgstr[1] ""
+"%d e-maile pominięto: ponownie można wysłać tylko nieudane e-maile z "
+"zachowaną treścią."
+msgstr[2] ""
+"%d e-maili pominięto: ponownie można wysłać tylko nieudane e-maile z "
+"zachowaną treścią."
+msgstr[3] ""
+"%d e-maili pominięto: ponownie można wysłać tylko nieudane e-maile z "
+"zachowaną treścią."
 
 #: apps.py:8
 msgid "E-MAIL TEMPLATES"
@@ -100,7 +168,7 @@ msgstr ""
 "wszystko pod nim – po niej. Tagi otwarte powyżej mogą zostać zamknięte "
 "poniżej."
 
-#: forms.py:98 models.py:115
+#: forms.py:98 models.py:116 models.py:478
 msgid "template"
 msgstr "szablon"
 
@@ -110,37 +178,39 @@ msgid ""
 "and cannot be placed inside a layout. Remove the {% extends %} tag from the "
 "content or leave the layout empty."
 msgstr ""
-"Ta treść używa taga {% extends %}, więc ma już własną ramę i nie może zostać "
-"umieszczona w layoucie. Usuń tag {% extends %} z treści albo zostaw puste "
+"Ta treść używa taga {% extends %}, więc ma już własną ramę i nie może zostać"
+" umieszczona w layoucie. Usuń tag {% extends %} z treści albo zostaw puste "
 "pole layout."
 
-#: models.py:49 models.py:288
+#: models.py:50 models.py:289
 msgid "name"
 msgstr "nazwa"
 
-#: models.py:51
+#: models.py:52
 msgid "header content"
 msgstr "treść nagłówka"
 
-#: models.py:54
+#: models.py:55
 msgid "Rendered above the content of every email template using this layout."
 msgstr ""
-"Wyświetlana nad treścią każdego szablonu email korzystającego z tego layoutu."
+"Wyświetlana nad treścią każdego szablonu email korzystającego z tego "
+"layoutu."
 
-#: models.py:58
+#: models.py:59
 msgid "footer content"
 msgstr "treść stopki"
 
-#: models.py:61
+#: models.py:62
 msgid "Rendered below the content of every email template using this layout."
 msgstr ""
-"Wyświetlana pod treścią każdego szablonu email korzystającego z tego layoutu."
+"Wyświetlana pod treścią każdego szablonu email korzystającego z tego "
+"layoutu."
 
-#: models.py:65
+#: models.py:66
 msgid "CSS styles"
 msgstr "Style CSS"
 
-#: models.py:68
+#: models.py:69
 msgid ""
 "Plain CSS, without the &lt;style&gt; tag - it is added automatically and "
 "placed before the header."
@@ -148,56 +218,57 @@ msgstr ""
 "Sam CSS, bez tagu &lt;style&gt; – jest dodawany automatycznie i umieszczany "
 "przed nagłówkiem."
 
-#: models.py:72 models.py:171
+#: models.py:73 models.py:172 models.py:524
 msgid "created"
 msgstr "utworzono"
 
-#: models.py:73 models.py:172
+#: models.py:74 models.py:173 models.py:525
 msgid "modified"
 msgstr "zmodyfikowano"
 
-#: models.py:76
+#: models.py:77
 msgid "Email layout"
 msgstr "Layout email"
 
-#: models.py:77
+#: models.py:78
 msgid "Email layouts"
 msgstr "Layouty email"
 
-#: models.py:113 models.py:286 models.py:319
+#: models.py:114 models.py:287 models.py:320 models.py:473
 msgid "ID"
 msgstr "ID"
 
-#: models.py:117 models.py:321
+#: models.py:118 models.py:322 models.py:506
 msgid "subject"
 msgstr "tytuł"
 
-#: models.py:120
+#: models.py:121
 msgid "you can use variables from table"
 msgstr "możesz użyć zmiennych kontekstowych z tabeli"
 
-#: models.py:123
+#: models.py:124
 msgid "preheader"
 msgstr "preheader"
 
-#: models.py:127
+#: models.py:128
 msgid ""
 "Short text shown by email clients next to the subject in the inbox, "
-"available to the layout as {{ preheader }}. You can use variables from table."
+"available to the layout as {{ preheader }}. You can use variables from "
+"table."
 msgstr ""
 "Krótki tekst wyświetlany przez programy pocztowe obok tematu na liście "
 "wiadomości, dostępny w layoucie jako {{ preheader }}. Możesz używać "
 "zmiennych z tabeli."
 
-#: models.py:131 models.py:322
+#: models.py:132 models.py:323
 msgid "content"
 msgstr "zawartość"
 
-#: models.py:133
+#: models.py:134
 msgid "default content"
 msgstr "treść domyślna"
 
-#: models.py:137
+#: models.py:138
 msgid ""
 "The template file as it was when the content was created or last replaced "
 "with it. A different file means a new default version is available."
@@ -205,78 +276,170 @@ msgstr ""
 "Plik szablonu z chwili utworzenia treści lub ostatniej podmiany. Inny plik "
 "oznacza, że dostępna jest nowa wersja domyślna."
 
-#: models.py:142
+#: models.py:143
 msgid "previous content"
 msgstr "poprzednia treść"
 
-#: models.py:146
+#: models.py:147
 msgid "The content before it was last replaced with the default version."
 msgstr "Treść sprzed ostatniej podmiany na wersję domyślną."
 
-#: models.py:151
+#: models.py:152
 msgid "layout"
 msgstr "layout"
 
-#: models.py:157
+#: models.py:158
 msgid ""
-"Optional. When set, the content above is rendered between the header and the "
-"footer of the chosen layout."
+"Optional. When set, the content above is rendered between the header and the"
+" footer of the chosen layout."
 msgstr ""
 "Opcjonalne. Jeśli ustawione, powyższa treść jest renderowana pomiędzy "
 "nagłówkiem a stopką wybranego layoutu."
 
-#: models.py:162
+#: models.py:163 models.py:479
 msgid "language"
 msgstr "język"
 
-#: models.py:167
+#: models.py:168
 msgid "ordering"
 msgstr "kolejność"
 
-#: models.py:169
+#: models.py:170 models.py:516
 msgid "attachments"
 msgstr "załączniki"
 
-#: models.py:176
+#: models.py:177
 msgid "Email template"
 msgstr "Szablon wiadomości"
 
-#: models.py:290
+#: models.py:291
 msgid "Attachment file"
 msgstr "Plik załącznika"
 
-#: models.py:293
+#: models.py:294
 msgid "Comment"
 msgstr "Komentarz"
 
-#: models.py:293
+#: models.py:294
 msgid "visible only in admin"
 msgstr "widoczne tylko w panelu administracyjnym"
 
-#: models.py:295
+#: models.py:296
 msgid "Ordering"
 msgstr "Kolejność"
 
-#: models.py:296
+#: models.py:297
 msgid "Send as link"
 msgstr "Wyślij jako link"
 
-#: models.py:305
+#: models.py:306
 #, python-format
 msgid "Attachment: %s"
 msgstr "Załącznik: %s"
 
-#: models.py:323
+#: models.py:324 models.py:468
 msgid "sent"
 msgstr "wysłano"
 
-#: models.py:326
+#: models.py:327
 msgid "Mass email message"
 msgstr "Wiadomość grupowa"
 
-#: models.py:327
+#: models.py:328
 msgid "Mass email messages"
 msgstr "Wiadomości grupowe"
+
+#: models.py:467
+msgid "pending"
+msgstr "oczekujący"
+
+#: models.py:469
+msgid "failed"
+msgstr "nieudany"
+
+#: models.py:481
+msgid "source"
+msgstr "źródło"
+
+#: models.py:484
+msgid "What sent the email, e.g. the name of a Celery task."
+msgstr "Co wysłało e-mail, np. nazwa zadania Celery."
+
+#: models.py:487
+msgid "source id"
+msgstr "id źródła"
+
+#: models.py:491
+msgid ""
+"The run of the source that sent the email, e.g. the id of a Celery task; "
+"emails sharing it come from one run."
+msgstr ""
+"Uruchomienie źródła, które wysłało e-mail, np. id zadania Celery; e-maile o "
+"tym samym id pochodzą z jednego uruchomienia."
+
+#: models.py:496
+msgid "source sequence"
+msgstr "kolejność w źródle"
+
+#: models.py:498
+msgid "The position of the email among the emails of one run."
+msgstr "Pozycja e-maila wśród e-maili jednego uruchomienia."
+
+#: models.py:501
+msgid "source context"
+msgstr "kontekst źródła"
+
+#: models.py:504
+msgid "What the source was called with, e.g. the arguments of a task."
+msgstr "Z czym wywołano źródło, np. argumenty zadania."
+
+#: models.py:507
+msgid "from"
+msgstr "od"
+
+#: models.py:509
+msgid "cc"
+msgstr "dw"
+
+#: models.py:510
+msgid "bcc"
+msgstr "udw"
+
+#: models.py:511
+msgid "reply to"
+msgstr "odpowiedź do"
+
+#: models.py:512
+msgid "headers"
+msgstr "nagłówki"
+
+#: models.py:514
+msgid "plain text"
+msgstr "zwykły tekst"
+
+#: models.py:518
+msgid "attempts"
+msgstr "próby"
+
+#: models.py:520
+msgid "How many times the email was handed to the email backend."
+msgstr "Ile razy e-mail został przekazany do backendu poczty."
+
+#: models.py:522
+msgid "last error"
+msgstr "ostatni błąd"
+
+#: models.py:523
+msgid "sent at"
+msgstr "wysłano"
+
+#: models.py:530
+msgid "Email log"
+msgstr "Log e-maila"
+
+#: models.py:531
+msgid "Email logs"
+msgstr "Logi e-maili"
 
 #: registry.py:150
 #, python-format
@@ -293,7 +456,7 @@ msgstr "<b>KONTEKST:</b><br/>%s"
 msgid "<b>BLOCKS:</b><br/>%s"
 msgstr "<b>BLOKI:</b><br/>%s"
 
-#: rich_text.py:63
+#: rich_text.py:64
 msgid ""
 "The content uses the {% extends %} tag, which the rich text editor cannot "
 "keep. Edit it as HTML code."
@@ -301,7 +464,7 @@ msgstr ""
 "Treść używa tagu {% extends %}, którego edytor tekstu sformatowanego nie "
 "zachowa. Edytuj ją jako kod HTML."
 
-#: rich_text.py:67
+#: rich_text.py:68
 #, python-format
 msgid ""
 "The rich text editor would move %(tags)s out of their place: they sit "
@@ -311,26 +474,28 @@ msgstr ""
 "się między wierszami lub komórkami tabeli albo elementami listy. Edytuj "
 "treść jako kod HTML."
 
-#: rich_text.py:72
+#: rich_text.py:73
 #, python-format
 msgid "The rich text editor would change %(tags)s. Edit it as HTML code."
-msgstr "Edytor tekstu sformatowanego zmieniłby %(tags)s. Edytuj treść jako kod HTML."
+msgstr ""
+"Edytor tekstu sformatowanego zmieniłby %(tags)s. Edytuj treść jako kod HTML."
 
-#: rich_text.py:158
+#: rich_text.py:159
 msgid "Variables"
 msgstr "Zmienne"
 
-#: rich_text.py:159
+#: rich_text.py:160
 msgid "Blocks"
 msgstr "Bloki"
 
 #: templates/admin/emailtemplates/emailtemplate/default_version.html:15
 #: templates/admin/emailtemplates/emailtemplate/default_version.html:23
 msgid "Home"
-msgstr ""
+msgstr "Strona główna"
 
 #: templates/admin/emailtemplates/emailtemplate/default_version.html:35
-msgid "This email template has no template file, so it has no default version."
+msgid ""
+"This email template has no template file, so it has no default version."
 msgstr ""
 "Ten szablon e-mail nie ma pliku szablonu, więc nie ma wersji domyślnej."
 

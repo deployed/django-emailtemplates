@@ -36,3 +36,19 @@ def check_css_inliner(app_configs, **kwargs):
             )
         ]
     return []
+
+
+@register()
+def check_celery(app_configs, **kwargs):
+    if (
+        getattr(settings, "EMAILTEMPLATES_CELERY", False)
+        and find_spec("celery") is None
+    ):
+        return [
+            Error(
+                "EMAILTEMPLATES_CELERY is set, but Celery is not installed.",
+                hint="pip install django-emailtemplates[celery]",
+                id="emailtemplates.E002",
+            )
+        ]
+    return []

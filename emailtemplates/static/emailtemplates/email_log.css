@@ -1,0 +1,27 @@
+/* The history of sent emails in the admin, see EmailLogAdmin. Styled for the default Django
+   admin; every rule is one class deep, so a project restyles it with a stylesheet of its own. */
+
+.emailtemplates-status {
+    font-weight: bold;
+}
+
+.emailtemplates-status--pending {
+    color: #b45309;
+}
+
+.emailtemplates-status--sent {
+    color: #15803d;
+}
+
+.emailtemplates-status--failed {
+    color: #b91c1c;
+}
+
+.emailtemplates-email-log-html {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 800px;
+    height: 640px;
+    border: 1px solid var(--hairline-color, #e8e8e8);
+    background: #fff;
+}

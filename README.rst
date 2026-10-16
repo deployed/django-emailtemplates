@@ -98,8 +98,13 @@ Usage
    the HTML rendered from the template, which email clients show, and a plain text version
    generated from it for clients that cannot show HTML, see `Plain text`_.
 
-   To send the email some other way, e.g. through a mail queue, render it without
-   sending::
+   To send it in the background instead, once the current transaction is committed, see
+   `Sending in the background`_::
+
+       eft.send_later([user.email])  # returns the EmailLog of the email
+
+   Emails can be recorded in the history of sent emails, see `Email logs`_. To only
+   render the email, without sending::
 
        rendered = eft.render()  # RenderedEmail(subject, html, text)
 
@@ -181,7 +186,74 @@ Settings
   tag. The admin preview shows the inlined email too. Requires the ``inline`` extra
   (`css-inline`_): ``pip install django-emailtemplates[inline]``.
 
+* ``EMAILTEMPLATES_CELERY`` - ``True`` sends the emails of ``send_later()`` with Celery,
+  see `Sending in the background`_; ``EMAILTEMPLATES_CELERY_MAX_RETRIES`` - how many
+  times a failed sending is retried (3); ``EMAILTEMPLATES_CELERY_QUEUE`` - the queue.
+* ``EMAILTEMPLATES_EMAIL_BACKEND``, ``EMAILTEMPLATES_EMAIL_LOG_CONTENT``,
+  ``EMAILTEMPLATES_EMAIL_LOG_RETENTION_DAYS`` - see `Email logs`_.
+
 .. _css-inline: https://github.com/Stranger6667/css-inline
+
+Sending in the background
+-------------------------
+
+``EmailFromTemplate.send_later()`` takes the arguments of ``send()`` but sends the email
+once the current transaction is committed (``transaction.on_commit()``), so a rolled back
+change sends nothing. The email is rendered right away, so the context may hold any
+objects, e.g. model instances, and recorded as a pending ``EmailLog``, which it returns.
+
+With ``EMAILTEMPLATES_CELERY = True`` (the ``celery`` extra:
+``pip install django-emailtemplates[celery]``) the email is sent by the Celery task
+``emailtemplates.tasks.send_email``, on the queue ``EMAILTEMPLATES_CELERY_QUEUE`` (the
+default one by default). A failed sending (an SMTP or a connection error) is retried with
+a growing delay, ``EMAILTEMPLATES_CELERY_MAX_RETRIES`` times (3 by default). Without
+Celery the email is sent right after the commit, in the same process; an error is
+recorded in its ``EmailLog`` and logged, not raised.
+
+Email logs
+----------
+
+The email backend of the library records every email sent through it - those of email
+templates and any other, e.g. ``send_mail()`` - as an *Email log*
+(``emailtemplates.models.EmailLog``)::
+
+    EMAIL_BACKEND = "emailtemplates.backends.EmailBackend"
+    EMAILTEMPLATES_EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"  # the default
+
+The backend records an email as *pending* before handing it to
+``EMAILTEMPLATES_EMAIL_BACKEND``, so the entry exists even if sending hangs or the worker
+is killed, then marks it *sent* or *failed*. Emails are handed over one by one, so an error
+in the middle of a batch does not fail the emails sent before it. A backend of the project
+can keep doing its own work behind it, or mix ``emailtemplates.backends.EmailLogBackendMixin``
+in itself. An entry holds the template, the sender and the recipients, the subject, the HTML
+and the plain text, the names of the attachments, the number of attempts, the last error and
+what sent the email.
+
+Inside a Celery task the entries describe the task: its name, its id and its arguments
+(``source``, ``source_id``, ``source_context``) and the position of the email among the
+emails of the run (``source_seq``). A retry of the task updates the entries of its run
+instead of adding new ones; an email already sent is never overwritten. Use
+``emailtemplates.tasks.EmailTask`` as the base of such tasks, so that the emails are marked
+failed once the retries run out, and a task failing before it sends anything (e.g. while
+rendering) leaves a failed entry with its arguments::
+
+    from emailtemplates.tasks import EmailTask
+
+    @app.task(base=EmailTask, autoretry_for=(SMTPException,), retry_backoff=True)
+    def send_order_confirmation(order_id):
+        ...
+
+The admin shows the entries read only, with the HTML as it was sent. Failed emails - not
+pending ones, which may still be retried - can be sent again with the *Send now* button or
+the *Send selected emails now* action, which need the change permission of email logs;
+the email is sent again as a new entry, with the attachments of its email template only.
+
+* ``EMAILTEMPLATES_EMAIL_LOG_CONTENT = False`` empties the HTML and the plain text once an
+  email is sent, e.g. for emails with personal data; such emails cannot be sent again.
+* ``python manage.py cleanup_email_logs`` (or the Celery task
+  ``emailtemplates.tasks.cleanup_email_logs``, e.g. daily in Celery beat) deletes the sent
+  emails older than ``EMAILTEMPLATES_EMAIL_LOG_RETENTION_DAYS`` (180) or ``--days``;
+  pending and failed ones are kept until someone acts on them.
 
 Mass emails
 -----------
@@ -413,8 +485,14 @@ Changelog
 * Plain text version of every email, generated from the HTML one by inscriptis, a new
   dependency (``emailtemplates.text.html_to_text()``).
 * ``EmailFromTemplate.render()`` returns ``RenderedEmail(subject, html, text)`` without
-  sending, e.g. for sending through a mail queue. ``EmailFromTemplate.text`` holds the
-  plain text after ``render_message()``.
+  sending. ``EmailFromTemplate.text`` holds the plain text after ``render_message()``.
+* History of sent emails: ``EmailLog`` model (migration ``0015``) written by the email
+  backend ``emailtemplates.backends.EmailBackend`` (or ``EmailLogBackendMixin``), Celery
+  retries of a task updating the entries of its run, ``emailtemplates.tasks.EmailTask``,
+  read-only admin sending failed emails again, ``cleanup_email_logs`` command and task.
+* ``EmailFromTemplate.send_later()``: sending after the commit of the transaction, in the
+  background with Celery (the ``celery`` extra, ``EMAILTEMPLATES_CELERY``), with retries.
+  ``emailtemplates.E002`` reports ``EMAILTEMPLATES_CELERY`` without Celery.
 * ``EMAILTEMPLATES_INLINE_CSS`` setting and the ``inline`` extra: CSS inlined into the
   sent emails, so that the styles of a layout apply to the content written in the rich
   text editor.

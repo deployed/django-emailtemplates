@@ -1,5 +1,7 @@
 import os
+import shutil
 import sys
+import tempfile
 
 import django
 from django.conf import settings
@@ -29,6 +31,8 @@ if __name__ == "__main__":
         }
     }
     settings.STATIC_URL = "/static/"
+    # attachments saved by the tests, deleted afterwards
+    settings.MEDIA_ROOT = tempfile.mkdtemp()
     settings.ROOT_URLCONF = "emailtemplates.tests.urls"
     settings.TEMPLATES = [
         {
@@ -51,5 +55,8 @@ if __name__ == "__main__":
     django.setup()
     TestRunner = get_runner(settings)
     test_runner = TestRunner(verbosity=3)
-    failures = test_runner.run_tests(["emailtemplates"])
+    try:
+        failures = test_runner.run_tests(["emailtemplates"])
+    finally:
+        shutil.rmtree(settings.MEDIA_ROOT)
     sys.exit(bool(failures))

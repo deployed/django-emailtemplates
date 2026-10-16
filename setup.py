@@ -46,6 +46,7 @@ setup(
     extras_require={
         'tinymce': ['django-tinymce>=4.0'],  # bundles TinyMCE 6+, whose API content_editor.js uses
         'inline': ['css-inline>=0.17'],  # keep_at_rules
+        'celery': ['celery>=5.0'],  # sending in the background, see emailtemplates.tasks
     },
     tests_require=tests_require
 )
