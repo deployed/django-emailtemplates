@@ -9,8 +9,9 @@ template for every email as a file; Site Admins can override its subject and con
 language in the Admin Panel, without a deployment. When no override exists in the
 database, the file is used.
 
-Site Admins editing templates should know the Django template language and the context
-each email gets - the admin shows the context described at registration.
+Site Admins edit the content in a rich text editor (or as HTML code) and insert the
+variables of the email context from a toolbar menu. Every email is sent as HTML together
+with its plain text version, generated from the HTML.
 
 Requirements: Python 3.10+, Django 4.0+.
 
@@ -19,13 +20,20 @@ Installation
 
 ::
 
-    pip install django-emailtemplates
+    pip install django-emailtemplates[tinymce]
+
+The ``tinymce`` extra installs `django-tinymce`_ for the rich text editor; without it the
+content is edited as HTML code. ``"tinymce"`` must be added to ``INSTALLED_APPS`` too, and
+the editor turned on with ``EMAILTEMPLATES_RICH_TEXT = True``.
+
+.. _django-tinymce: https://github.com/jazzband/django-tinymce
 
 Add the app and its URLs (needed for the admin previews and the mass email button)::
 
     # settings.py
     INSTALLED_APPS = [
         ...
+        "tinymce",
         "emailtemplates",
     ]
 
@@ -77,18 +85,86 @@ Usage
        eft.send([user.email])  # returns the number of sent messages
 
    The template is looked up in the database by path and language, then in the template
-   files. The ``subject`` passed here is used when the template comes from a file; a
-   database template brings its own subject, rendered with the same context as the
+   files. The ``subject`` passed here (or, without it, the ``subject`` of the
+   registration) is used when the template comes from a file; a database template brings
+   its own subject. Either way the subject is rendered with the same context as the
    content. The context always contains ``date``.
 
    ``send()`` takes extra ``EmailMessage`` kwargs (``cc``, ``bcc``, ``reply_to``, ...),
    ``attachment_paths`` and ``fail_silently`` (``True`` by default: SMTP errors are logged,
    not raised).
 
+   The email is sent with two versions of the same content (``multipart/alternative``):
+   the HTML rendered from the template, which email clients show, and a plain text version
+   generated from it for clients that cannot show HTML, see `Plain text`_.
+
+   To send it in the background instead, once the current transaction is committed, see
+   `Sending in the background`_::
+
+       eft.send_later([user.email])  # returns the EmailLog of the email
+
+   Emails can be recorded in the history of sent emails, see `Email logs`_. To only
+   render the email, without sending::
+
+       rendered = eft.render()  # RenderedEmail(subject, html, text)
+
 4. To change the email without a deployment, add an *Email template* in the admin for the
-   registered path and a language. Its content starts as a copy of the file. Files added
-   as *Email attachments* and linked to the template are attached to every email, or,
-   with *send as link*, passed to the context as ``default_attachments`` (name, URL pairs).
+   registered path and a language - or create the templates of all emails in a data
+   migration, see `Creating email templates`_. Its content starts as a copy of the file.
+   Files added as *Email attachments* and linked to the template are attached to every
+   email, or, with *send as link*, passed to the context as ``default_attachments`` (name,
+   URL pairs).
+
+Default versions
+----------------
+
+The template file is the *default version* of an email; the content in the database is
+the one sent. Changing the file never changes the content: Site Admins may have edited it.
+
+Every email template keeps a snapshot of the file it was made from
+(``EmailTemplate.default_content``). When developers change the file, the admin lists the
+template as having a *New default version*, and its page links to a comparison: the
+preview of the current content and of the default version side by side, with the changes
+in the HTML. There the Site Admin may replace the content with the default version, and
+restore the replaced content afterwards (``EmailTemplate.previous_content``). In code:
+``has_new_default()``, ``replace_with_default()`` and ``restore_previous_content()``.
+
+Templates created before 3.0.0 get the file as it is during the migration to 3.0.0
+(``0014``) as their snapshot, so changes of the file made after it are reported.
+
+Creating email templates
+------------------------
+
+Projects create the email templates of their emails in a data migration, so that Site
+Admins find every email in the admin right after the deployment, wrapped in the layout.
+The migration copies the content of each template file once; from then on the content in
+the database is the one sent and edited, and a later change of the file is offered as a
+new default version (see `Default versions`_). A new email needs a migration adding it.
+The migration depends on the migration of this app adding ``default_content``
+(``0014_emailtemplate_preheader_default_content``) and on the one creating the layout::
+
+    from django.db import migrations
+    from django.template.loader import get_template
+    from emailtemplates.registry import email_templates
+
+
+    def create_email_templates(apps, schema_editor):
+        EmailTemplate = apps.get_model("emailtemplates", "EmailTemplate")
+        EmailLayout = apps.get_model("emailtemplates", "EmailLayout")
+        layout = EmailLayout.objects.get(name="Standard")
+        for item in email_templates.registration_items():
+            content = get_template(item.path).template.source
+            EmailTemplate.objects.get_or_create(
+                title=item.path,
+                language="en",
+                defaults={
+                    "subject": str(item.subject),
+                    "preheader": str(item.preheader),
+                    "content": content,
+                    "default_content": content,  # the snapshot of the default version
+                    "layout": layout,
+                },
+            )
 
 Settings
 --------
@@ -99,6 +175,85 @@ Settings
 * ``BASE_URL`` - optional, used to make attachment links absolute.
 * ``MASS_EMAIL_RECIPIENTS`` - optional dotted path to a function returning the recipient
   emails of mass emails; all active users by default.
+* ``EMAILTEMPLATES_RICH_TEXT`` - ``True`` turns on the rich text editor, see
+  `Rich text editor`_; off by default, so that projects having django-tinymce for other
+  reasons keep the HTML code editor.
+* ``EMAILTEMPLATES_RICH_TEXT_CONFIG`` - TinyMCE options merged over the ones of the rich
+  text editor, see `Rich text editor`_.
+* ``EMAILTEMPLATES_INLINE_CSS`` - ``True`` moves the CSS of ``<style>`` tags (e.g. the
+  ``styles`` of a layout) into the ``style`` attributes of the elements when an email is
+  rendered, as many email clients ignore ``<style>``. Media queries stay in a ``<style>``
+  tag. The admin preview shows the inlined email too. Requires the ``inline`` extra
+  (`css-inline`_): ``pip install django-emailtemplates[inline]``.
+
+* ``EMAILTEMPLATES_CELERY`` - ``True`` sends the emails of ``send_later()`` with Celery,
+  see `Sending in the background`_; ``EMAILTEMPLATES_CELERY_MAX_RETRIES`` - how many
+  times a failed sending is retried (3); ``EMAILTEMPLATES_CELERY_QUEUE`` - the queue.
+* ``EMAILTEMPLATES_EMAIL_BACKEND``, ``EMAILTEMPLATES_EMAIL_LOG_CONTENT``,
+  ``EMAILTEMPLATES_EMAIL_LOG_RETENTION_DAYS`` - see `Email logs`_.
+
+.. _css-inline: https://github.com/Stranger6667/css-inline
+
+Sending in the background
+-------------------------
+
+``EmailFromTemplate.send_later()`` takes the arguments of ``send()`` but sends the email
+once the current transaction is committed (``transaction.on_commit()``), so a rolled back
+change sends nothing. The email is rendered right away, so the context may hold any
+objects, e.g. model instances, and recorded as a pending ``EmailLog``, which it returns.
+
+With ``EMAILTEMPLATES_CELERY = True`` (the ``celery`` extra:
+``pip install django-emailtemplates[celery]``) the email is sent by the Celery task
+``emailtemplates.tasks.send_email``, on the queue ``EMAILTEMPLATES_CELERY_QUEUE`` (the
+default one by default). A failed sending (an SMTP or a connection error) is retried with
+a growing delay, ``EMAILTEMPLATES_CELERY_MAX_RETRIES`` times (3 by default). Without
+Celery the email is sent right after the commit, in the same process; an error is
+recorded in its ``EmailLog`` and logged, not raised.
+
+Email logs
+----------
+
+The email backend of the library records every email sent through it - those of email
+templates and any other, e.g. ``send_mail()`` - as an *Email log*
+(``emailtemplates.models.EmailLog``)::
+
+    EMAIL_BACKEND = "emailtemplates.backends.EmailBackend"
+    EMAILTEMPLATES_EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"  # the default
+
+The backend records an email as *pending* before handing it to
+``EMAILTEMPLATES_EMAIL_BACKEND``, so the entry exists even if sending hangs or the worker
+is killed, then marks it *sent* or *failed*. Emails are handed over one by one, so an error
+in the middle of a batch does not fail the emails sent before it. A backend of the project
+can keep doing its own work behind it, or mix ``emailtemplates.backends.EmailLogBackendMixin``
+in itself. An entry holds the template, the sender and the recipients, the subject, the HTML
+and the plain text, the names of the attachments, the number of attempts, the last error and
+what sent the email.
+
+Inside a Celery task the entries describe the task: its name, its id and its arguments
+(``source``, ``source_id``, ``source_context``) and the position of the email among the
+emails of the run (``source_seq``). A retry of the task updates the entries of its run
+instead of adding new ones; an email already sent is never overwritten. Use
+``emailtemplates.tasks.EmailTask`` as the base of such tasks, so that the emails are marked
+failed once the retries run out, and a task failing before it sends anything (e.g. while
+rendering) leaves a failed entry with its arguments::
+
+    from emailtemplates.tasks import EmailTask
+
+    @app.task(base=EmailTask, autoretry_for=(SMTPException,), retry_backoff=True)
+    def send_order_confirmation(order_id):
+        ...
+
+The admin shows the entries read only, with the HTML as it was sent. Failed emails - not
+pending ones, which may still be retried - can be sent again with the *Send now* button or
+the *Send selected emails now* action, which need the change permission of email logs;
+the email is sent again as a new entry, with the attachments of its email template only.
+
+* ``EMAILTEMPLATES_EMAIL_LOG_CONTENT = False`` empties the HTML and the plain text once an
+  email is sent, e.g. for emails with personal data; such emails cannot be sent again.
+* ``python manage.py cleanup_email_logs`` (or the Celery task
+  ``emailtemplates.tasks.cleanup_email_logs``, e.g. daily in Celery beat) deletes the sent
+  emails older than ``EMAILTEMPLATES_EMAIL_LOG_RETENTION_DAYS`` (180) or ``--days``;
+  pending and failed ones are kept until someone acts on them.
 
 Mass emails
 -----------
@@ -122,8 +277,9 @@ default). When a layout is selected, the email is rendered as::
     <style>styles</style> + header_content + EmailTemplate.content + footer_content
 
 ``styles`` holds plain CSS without the ``<style>`` tag, which is added automatically;
-empty ``styles`` adds no tag at all. Keeping the CSS in a field of its own means the
-header field holds markup only.
+empty ``styles`` adds no tag at all. When the header starts a whole HTML document, the
+``<style>`` tag goes into its ``<head>``, before ``</head>``, so the doctype stays first.
+Keeping the CSS in a field of its own means the header field holds markup only.
 
 The parts are concatenated first and rendered afterwards, as a single Django template
 with a single context. The header and the footer may therefore use the same context
@@ -133,6 +289,14 @@ variables as the email template itself, e.g.::
     header_content: <img src="https://{{ shop_domain }}/static/img/logo.png">
     content:        <p class="greeting">Hello {{ full_name }},</p>
     footer_content: <p>Sent by {{ shop_domain }}</p>
+
+The context of the email holds ``subject`` (rendered) and ``preheader`` too, unless it
+already has variables of these names, so the header may contain e.g.
+``<title>{{ subject }}</title>`` and a hidden ``<span>{{ preheader }}</span>``. The
+preheader is the text email clients show next to the subject in the inbox; every email
+template has its own (``EmailTemplate.preheader``), and new ones start with the
+``preheader`` passed to ``register()``. Both are plain text: they are not HTML escaped
+when rendered, and escaped where the layout inserts them into HTML.
 
 Because the parts are joined before being rendered, the header may open HTML tags that
 the footer closes - that is the normal way of wrapping the content in a container.
@@ -152,18 +316,24 @@ developers) or a layout (frame in the database, for Site Admins).
 Previews
 --------
 
-* *Show email preview* on an email template renders the template together with its
-  layout, filled with the example context from the registry.
+* *Show email preview* on an email template renders it with ``EmailFromTemplate``, as it
+  is sent - with its layout, subject, preheader and blocks - filled with the example
+  context from the registry. Example values of
+  ``help_context`` are fixed; for real objects pass ``preview_context`` to ``register()``,
+  a dict or a callable returning one, called on every preview, e.g.
+  ``preview_context=lambda: {"order": Order.objects.first()}``.
 * *Show layout preview* on a layout renders the header, the footer and the styles with a
   placeholder in place of the email content. It has no context, so variables used in the
   header or the footer render empty.
+* Next to the content editor of an email template, a live preview shows the email as it
+  would be sent - in its layout, with the example context and the inlined CSS - with the
+  content, subject, preheader and layout of the form, not saved yet. It is updated shortly
+  after each change; while the content cannot be rendered (e.g. a template tag is being
+  typed) the last preview stays, with the error below it.
 
-Both previews work on saved data, so save the template after picking a layout to see the
-whole email.
-
-There is deliberately no live preview while typing. The parts of a layout only render
-correctly together - a header that opens the tags its footer closes is broken HTML on its
-own - so a per-field preview reports errors that are not there.
+The first two previews work on saved data. There is no live preview of a layout: its parts
+only render correctly together - a header that opens the tags its footer closes is broken
+HTML on its own - so a per-field preview reports errors that are not there.
 
 Editor
 ------
@@ -175,9 +345,10 @@ are actually used - the header opens the tags the footer closes - and the form s
 value back into the two model fields on save. See ``EmailFrameWidget`` and
 ``EmailFrameField``.
 
-The frame, ``styles`` and ``EmailTemplate.content`` are edited with CodeMirror syntax
-highlighting, which the library ships and wires up by default; projects need no widget
-configuration of their own. Any textarea with a ``data-code-editor`` attribute holding
+The frame and ``styles`` are edited with CodeMirror syntax highlighting, which the library
+ships and wires up by default; projects need no widget configuration of their own.
+``EmailTemplate.content`` is edited as HTML code in CodeMirror too, or as rich text, see
+`Rich text editor`_. Any textarea with a ``data-code-editor`` attribute holding
 CodeMirror options as JSON gets the same treatment; the easiest way to get one is
 ``emailtemplates.widgets.CodeEditorTextarea(mode="html")`` (or ``mode="css"``).
 
@@ -185,8 +356,178 @@ The editors run without line numbers and, for HTML, without mismatched-tag marki
 frame the closing tag of the header lives in the footer, so marking it as an error would
 be wrong.
 
+Rich text editor
+================
+
+With ``EMAILTEMPLATES_RICH_TEXT = True`` (and django-tinymce installed) the content of an
+email template is edited as *Rich text* (TinyMCE) or as *HTML code* (CodeMirror), switched
+with the buttons above the editor at any time, without saving. The rich text editor opens
+unless the content would not survive it, see the limits below.
+
+The rich text editor is meant for the text of an email: paragraphs, headings, lists,
+links, simple tables and formatting. The frame of the email - logo, header, footer, CSS -
+belongs in a layout, see `Email layouts`_. The toolbar starts with a *Variables* menu,
+inserting the variables of the context described at registration (``help_context``), and
+a *Blocks* menu, see `Blocks`_. Variables and template tags (``{% if %}``, ``{% for %}``,
+...) in the text are shown as chips, typed as text, but removed as a whole; the content
+keeps them as plain ``{{ name }}`` and ``{% tag %}``. Template tags in attribute values,
+e.g. ``href="{{ url }}"``, stay as they are. A paragraph holding only tags producing no
+output, e.g. ``{% if %}`` or ``{% endfor %}``, is saved as the bare tags, without the
+``<p>``, so it adds no gap to the email.
+
+The editor has its own TinyMCE configuration, made for emails
+(``emailtemplates.rich_text.RICH_TEXT_CONFIG``): URLs are kept as typed, so links may point
+at variables (``href="{{ activation_url }}"``), images cannot be pasted as data URIs and
+formatting is saved as inline styles. ``TINYMCE_DEFAULT_CONFIG`` of the project is meant
+for its website, so only ``license_key``, ``language`` and ``directionality`` are taken
+from it. ``EMAILTEMPLATES_RICH_TEXT_CONFIG`` overrides any option, e.g.::
+
+    EMAILTEMPLATES_RICH_TEXT_CONFIG = {"license_key": "gpl", "height": 700}
+
+The live preview stands next to the editor when both fit, below it otherwise. The editor
+takes at least 480px, or the ``width`` in pixels set in ``EMAILTEMPLATES_RICH_TEXT_CONFIG``
+(e.g. ``"width": 1000``): a wider editor moves the preview below it on narrower screens.
+The editor is never wider than its column, so it never runs into the preview.
+
+The styles of the editor and the previews (``emailtemplates/code_editor.css``,
+``emailtemplates/default_version.css``) are written for the default Django admin and use
+its colors; their rules are one class deep, so a project restyles them with a stylesheet
+of its own. Blocks and chips inside the rich text editor are styled by
+``emailtemplates/rich_text_content.css`` (TinyMCE ``content_css``).
+
+The content is shown in the editor with the ``styles`` of the email layout of the
+template. Classes of the layout, e.g. of a button, can be offered as TinyMCE
+``style_formats``; with them the toolbar gets a *Formats* button::
+
+    EMAILTEMPLATES_RICH_TEXT_CONFIG = {
+        "body_class": "email-body",  # when the styles of the layout are scoped to it
+        "style_formats": [
+            {"title": "Button", "selector": "a", "classes": "btn"},
+            {"title": "Callout", "block": "div", "classes": "callout", "wrapper": True},
+        ],
+    }
+
+Limits of the rich text editor:
+
+* A browser moves text out of places where HTML allows none, and so does the editor:
+  template tags placed between table rows, table cells or list items would end up
+  outside the table or the list. Such content opens in the HTML code editor and cannot be
+  switched to rich text; the message above the editor names the tags.
+* Content using ``{% extends %}`` cannot be edited as rich text either.
+* When opening the content, the editor checks that it keeps every template tag; content it
+  would change (e.g. a tag inside an HTML tag, ``<td {% if x %}class="x"{% endif %}>``)
+  stays in the HTML code editor, unchanged, with the tags named above the editor.
+* The editor encodes ``>``, ``<`` and ``&`` typed as text; inside ``{% %}`` and ``{{ }}``
+  they are decoded again on save, so ``{% if count > 1 %}`` keeps working.
+
+Blocks
+======
+
+Some parts of an email are too complex for Site Admins to edit, e.g. a table with the
+details of an order, but they still want to decide where it goes and write the text
+around it. Register such a part as a block - a template file of its own - and the
+content places it as a variable::
+
+    email_templates.register(
+        "emails/order_summary.html",
+        help_context={"order": "The order"},
+        blocks={
+            "order_details": ("Order details", "emails/components/order_details.html"),
+            "paid_order_details": (
+                "Order details (paid)",
+                "emails/components/order_details.html",
+                {"paid": True},  # extra context, like {% include ... with paid=True %}
+            ),
+        },
+    )
+
+The block template gets the context of the email, updated with the extra context, if
+given. It is rendered only when the content uses the block. A variable of the same name
+passed in the context takes precedence over the block.
+
+In the rich text editor the *Blocks* menu inserts a block as a grey, labeled box that
+can be moved or removed, but not edited. A click on the box shows the block rendered with
+the example context (``preview_context``), a second click hides it; the preview is never
+saved. In the content a block is stored as::
+
+    <div class="emailtemplates-block" data-label="Order details">{{ order_details }}</div>
+
+The ``<div>`` keeps the block out of paragraphs; the default template files may use the
+same markup. The admin lists the blocks of a template next to its context, and the email
+preview renders them with the example context.
+
+Plain text
+==========
+
+Every email is sent with a plain text version, the fallback for email clients that cannot
+show HTML. It is generated from the rendered HTML by `inscriptis`_
+(``emailtemplates.text.html_to_text()``), laid out as a browser shows the HTML, with links
+followed by their address, e.g. ``[activate](https://example.com/activate/)``. Styles,
+scripts, the document head and elements hidden with ``display: none`` (e.g. a preheader)
+are left out.
+
+.. _inscriptis: https://github.com/weblyzard/inscriptis
+
+Development
+===========
+
+Run the tests with ``python runtests.py`` (``tox`` for every supported Python and Django).
+
 Changelog
 =========
+
+3.0.0
+-----
+* Rich text editor (TinyMCE) for the content of email templates, switched with the HTML
+  code editor without saving, with *Variables* and *Blocks* menus and variables shown as
+  chips. The ``tinymce`` extra, ``EMAILTEMPLATES_RICH_TEXT`` (opt-in) and
+  ``EMAILTEMPLATES_RICH_TEXT_CONFIG`` settings.
+* Plain text version of every email, generated from the HTML one by inscriptis, a new
+  dependency (``emailtemplates.text.html_to_text()``).
+* ``EmailFromTemplate.render()`` returns ``RenderedEmail(subject, html, text)`` without
+  sending. ``EmailFromTemplate.text`` holds the plain text after ``render_message()``.
+* History of sent emails: ``EmailLog`` model (migration ``0015``) written by the email
+  backend ``emailtemplates.backends.EmailBackend`` (or ``EmailLogBackendMixin``), Celery
+  retries of a task updating the entries of its run, ``emailtemplates.tasks.EmailTask``,
+  read-only admin sending failed emails again, ``cleanup_email_logs`` command and task.
+* ``EmailFromTemplate.send_later()``: sending after the commit of the transaction, in the
+  background with Celery (the ``celery`` extra, ``EMAILTEMPLATES_CELERY``), with retries.
+  ``emailtemplates.E002`` reports ``EMAILTEMPLATES_CELERY`` without Celery.
+* ``EMAILTEMPLATES_INLINE_CSS`` setting and the ``inline`` extra: CSS inlined into the
+  sent emails, so that the styles of a layout apply to the content written in the rich
+  text editor.
+* System checks: ``emailtemplates.W001`` warns of ``EMAILTEMPLATES_RICH_TEXT`` without
+  django-tinymce, ``emailtemplates.E001`` of ``EMAILTEMPLATES_INLINE_CSS`` without
+  css-inline.
+* ``EmailTemplate.preheader`` and the ``preheader`` of ``register()``; ``subject`` and
+  ``preheader`` in the context of the layout.
+* The rich text editor shows the content with the styles of the layout and gets a
+  *Formats* button when ``style_formats`` are configured.
+* Layouts may be whole HTML documents: the styles go before ``</head>`` of the header.
+* ``preview_context`` of ``register()``: context of the admin preview, e.g. with model
+  instances.
+* Live preview of the email next to the content editor, updated while editing, before
+  saving.
+* Default versions: email templates keep a snapshot of their template file; the admin
+  shows when developers changed it, compares both versions side by side and lets Site
+  Admins replace the content with the new default version, or restore the replaced
+  content.
+* Blocks: parts of an email rendered from template files of their own
+  (``email_templates.register(..., blocks=...)``), placed by Site Admins with the *Blocks*
+  menu of the rich text editor.
+* The ``subject`` of the registration is used for templates coming from a file when
+  ``EmailFromTemplate`` gets no ``subject``; the subject of a file template is rendered
+  with the context too.
+* A missing template file is logged at the debug level instead of as an error: email
+  templates may live in the database only, and the admin asks for their file on every page.
+* Creating an email template no longer switches the active language to the language of
+  the template (``get_default_subject()`` activated it for the rest of the request).
+* The subject is not HTML escaped any more: a variable holding ``Tom & Jerry`` is shown
+  as it is, not as ``Tom &amp; Jerry``.
+* **Backward incompatible**: emails are sent as ``EmailMultiAlternatives`` - the body
+  (``msg.body``) is the plain text and the HTML is an alternative; previously the body was
+  the HTML with ``content_subtype = "html"``. ``EmailFromTemplate.content_subtype`` is
+  removed.
 
 2.0.0
 -----

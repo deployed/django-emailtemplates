@@ -7,3 +7,6 @@ class EmailtempatesConfig(AppConfig):
     name = "emailtemplates"
     verbose_name = _("E-MAIL TEMPLATES")
     default_auto_field = "django.db.models.BigAutoField"
+
+    def ready(self):
+        from emailtemplates import checks  # noqa: F401 registers the system checks
