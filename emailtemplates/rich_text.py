@@ -14,6 +14,7 @@ import re
 from html.parser import HTMLParser
 
 from django.conf import settings
+from django.templatetags.static import static
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy
 
@@ -24,6 +25,16 @@ try:
     from tinymce.widgets import TinyMCE
 except ImportError:  # the optional dependency is missing, see `rich_text_available()`
     tinymce_settings = TinyMCE = None
+
+
+def rich_text_available():
+    """
+    The rich text editor is opted into with ``EMAILTEMPLATES_RICH_TEXT = True`` and needs
+    django-tinymce. Without it the content is edited as HTML code only, so projects having
+    django-tinymce for other reasons keep that editor.
+    """
+    return getattr(settings, "EMAILTEMPLATES_RICH_TEXT", False) and TinyMCE is not None
+
 
 # Django template tags and variables.
 TEMPLATE_TAG_RE = re.compile(r"{%.*?%}|{{.*?}}", re.DOTALL)
@@ -57,6 +68,10 @@ MISPLACED_PROBLEM = gettext_lazy(
     "The rich text editor would move %(tags)s out of their place: they sit between table "
     "rows, table cells or list items. Edit it as HTML code."
 )
+# shown by content_editor.js only, when the editor changed template tags while loading
+CHANGED_PROBLEM = gettext_lazy(
+    "The rich text editor would change %(tags)s. Edit it as HTML code."
+)
 
 # What the editor is allowed to produce, chosen for emails: no images pasted as data URIs
 # (most email clients block them), formatting as inline styles, URLs kept as typed.
@@ -85,23 +100,14 @@ RICH_TEXT_CONFIG = {
     # encode only <, > and &, so quotes and national characters stay readable
     "entity_encoding": "raw",
     "paste_data_images": False,
-    # blocks (see `emailtemplates.registry.Block`) and template tags, which
-    # content_editor.js shows as chips (<span>s of this class), are moved or removed as a
-    # whole; TinyMCE takes one class only
+    # blocks (see `emailtemplates.registry.Block`) are moved or removed as a whole
     "noneditable_class": "emailtemplates-block",
-    "content_style": (
-        "div.emailtemplates-block { margin: 8px 0; padding: 8px 12px; "
-        "border: 1px dashed #8a8a8a; border-radius: 4px; background: #f3f3f3; "
-        "color: #8a8a8a; font-family: monospace; cursor: pointer; }"
-        "div.emailtemplates-block::before { content: attr(data-label) ' \\25B8'; "
-        "display: block; color: #333; font-family: sans-serif; font-weight: bold; }"
-        ".emailtemplates-block-preview { margin-top: 8px; padding: 8px; "
-        "background: #fff; color: #000; font-family: sans-serif; cursor: default; }"
-        "span.emailtemplates-block { padding: 0 3px; border-radius: 3px; "
-        "background: #e8f0fe; color: #1a56b8; font-family: monospace; "
-        "font-size: 0.9em; }"
-    ),
 }
+
+# Styles of the content of the editor: the look of blocks and of template tags shown as
+# chips; restyled by overriding the static file or with "content_css" in
+# EMAILTEMPLATES_RICH_TEXT_CONFIG.
+CONTENT_CSS = "emailtemplates/rich_text_content.css"
 
 # Options of the project's TINYMCE_DEFAULT_CONFIG kept in the email editor. Everything else
 # there is meant for the editors of the website, not for emails.
@@ -130,6 +136,7 @@ def rich_text_config(variables=(), blocks=(), styles="", blocks_url=""):
         config["toolbar"] = config["toolbar"].replace(
             "| blocks |", "| blocks styles |", 1
         )
+    config.setdefault("content_css", ["default", static(CONTENT_CSS)])
     if styles:
         config["content_style"] = config.get("content_style", "") + styles
     # the language as django-tinymce works it out; the rest of the project's
@@ -165,6 +172,9 @@ def unescape_template_tags(content):
     Reverts what the rich text editor does to Django template syntax typed as text: it
     encodes ``>``, ``<``, ``&`` and non-breaking spaces, so ``{% if count > 1 %}`` would be
     saved as ``{% if count &gt; 1 %}``, which is not a valid template.
+
+    Applied to the content from either editor: Django template syntax needs no HTML
+    entities, so the content does not depend on which editor it was saved from.
     """
 
     def unescape(match):

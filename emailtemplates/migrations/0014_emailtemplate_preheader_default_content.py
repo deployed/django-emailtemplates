@@ -1,4 +1,22 @@
 from django.db import migrations, models
+from django.template import TemplateDoesNotExist, TemplateSyntaxError
+from django.template.loader import get_template
+
+
+def snapshot_default_content(apps, schema_editor):
+    """
+    Existing templates get their template file as it is now as the default content, so that
+    later changes of the file are offered as a new default version.
+    """
+    EmailTemplate = apps.get_model("emailtemplates", "EmailTemplate")
+    for email_template in EmailTemplate.objects.filter(default_content=""):
+        try:
+            source = get_template(email_template.title).template.source
+        except (TemplateDoesNotExist, TemplateSyntaxError):
+            continue  # the template lives in the database only
+        EmailTemplate.objects.filter(pk=email_template.pk).update(
+            default_content=source
+        )
 
 
 class Migration(migrations.Migration):
@@ -37,4 +55,5 @@ class Migration(migrations.Migration):
                 verbose_name="previous content",
             ),
         ),
+        migrations.RunPython(snapshot_default_content, migrations.RunPython.noop),
     ]

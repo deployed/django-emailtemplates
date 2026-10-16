@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import copy
 import difflib
 
+import django
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import PermissionDenied
@@ -13,45 +14,33 @@ from django.template import Context, Template
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import escape, format_html
+from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _
 from django.views import View
 
-from emailtemplates.email import finalize_html
+from emailtemplates.email import EmailFromTemplate
 from emailtemplates.models import EmailLayout, EmailTemplate, MassEmailMessage
 from emailtemplates.registry import email_templates
 from emailtemplates.rich_text import unescape_template_tags
-from emailtemplates.widgets import EmailContentEditor
-
-
-def get_preview_context(email_template):
-    """
-    Context of the email preview: the example context of the registry, the blocks and the
-    subject and preheader of the template.
-    """
-    context = email_templates.get_preview_context(email_template.title)
-    context.update(email_templates.get_blocks_context(email_template.title, context))
-    for field in ("subject", "preheader"):
-        context.setdefault(
-            field,
-            Template(getattr(email_template, field)).render(
-                Context(context, autoescape=False)
-            ),
-        )
-    return context
 
 
 def render_preview(email_template, content=None):
     """
     HTML of the preview of an email template: `content` (by default the content of the
-    template) in the layout of the template, filled with the example context.
+    template) rendered by `EmailFromTemplate` as the email is sent - in the layout, with the
+    subject, the preheader and the blocks - filled with the example context of the registry.
     """
     if content is not None:
         email_template = copy.copy(email_template)
         email_template.content = content
-    email_content = Template(email_template.get_content())
-    return finalize_html(
-        email_content.render(Context(get_preview_context(email_template)))
+    eft = EmailFromTemplate(
+        name=email_template.title,
+        language=email_template.language,
+        template_object=email_template,
+        registry_validation=False,
     )
+    eft.context.update(email_templates.get_preview_context(email_template.title))
+    return eft.render().html
 
 
 class EmailPreviewView(View):
@@ -197,10 +186,12 @@ class EmailTemplateDefaultVersionView(EmailTemplateAdminView):
             opts=self.model_admin.opts,
             original=self.object,
             change_url=self.get_change_url(),
+            # the markup of the breadcrumbs of the admin, a list since Django 6.0
+            breadcrumbs_list=django.VERSION >= (6, 0),
             has_default=bool(default),
             has_new_default=self.object.has_new_default(),
             differs=self.object.differs_from_default(),
-            diff_rows=diff_rows(self.object.content, default),
+            diff_table=diff_table(self.object.content, default),
             current_preview=safe_preview(self.object),
             default_preview=safe_preview(self.object, default),
         )
@@ -215,7 +206,7 @@ class EmailTemplateBlocksView(EmailTemplateAdminView):
     permission = "view"
 
     def get(self, request, object_id):
-        context = get_preview_context(self.object)
+        context = email_templates.get_preview_context(self.object.title)
         blocks = {}
         for block in email_templates.get_blocks(self.object.title):
             try:
@@ -247,9 +238,7 @@ class EmailTemplatePreviewView(EmailTemplateAdminView):
         """
         data = self.request.POST
         email_template = copy.copy(self.object)
-        email_template.content = data.get("content", "")
-        if EmailContentEditor.submitted_editor(data, "content") == "rich":
-            email_template.content = unescape_template_tags(email_template.content)
+        email_template.content = unescape_template_tags(data.get("content", ""))
         email_template.subject = data.get("subject", email_template.subject)
         email_template.preheader = data.get("preheader", email_template.preheader)
         layout_id = data.get("layout", "")
@@ -261,29 +250,19 @@ class EmailTemplatePreviewView(EmailTemplateAdminView):
         return email_template
 
 
-def diff_rows(current, default):
+def diff_table(current, default):
     """
-    The lines of the content and of the default version side by side, as rows of
-    (number, line, change) pairs for both sides; change is "removed", "added", "changed" or
-    "" and a missing side is (None, "", "").
+    The lines of the content and of the default version side by side, with line numbers and
+    the changes marked, as the HTML table of `difflib.HtmlDiff`.
     """
-    left = (current or "").splitlines()
-    right = (default or "").splitlines()
-    rows = []
-    matcher = difflib.SequenceMatcher(None, left, right, autojunk=False)
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        for offset in range(max(i2 - i1, j2 - j1)):
-            i, j = i1 + offset, j1 + offset
-            change = {"replace": "changed", "delete": "removed", "insert": "added"}.get(
-                tag, ""
-            )
-            rows.append(
-                (
-                    (i + 1, left[i], change) if i < i2 else (None, "", ""),
-                    (j + 1, right[j], change) if j < j2 else (None, "", ""),
-                )
-            )
-    return rows
+    return mark_safe(
+        difflib.HtmlDiff(wrapcolumn=60).make_table(
+            (current or "").splitlines(),
+            (default or "").splitlines(),
+            _("Your content"),
+            _("Default version"),
+        )
+    )
 
 
 def safe_preview(email_template, content=None):

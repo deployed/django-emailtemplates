@@ -1,0 +1,41 @@
+/* The content of the rich text editor of email templates (TinyMCE "content_css"), see
+   emailtemplates.rich_text. */
+
+/* blocks, see emailtemplates.registry.Block */
+div.emailtemplates-block {
+    margin: 8px 0;
+    padding: 8px 12px;
+    border: 1px dashed #8a8a8a;
+    border-radius: 4px;
+    background: #f3f3f3;
+    color: #8a8a8a;
+    font-family: monospace;
+    cursor: pointer;
+}
+
+div.emailtemplates-block::before {
+    content: attr(data-label) " \25B8";
+    display: block;
+    color: #333;
+    font-family: sans-serif;
+    font-weight: bold;
+}
+
+.emailtemplates-block-preview {
+    margin-top: 8px;
+    padding: 8px;
+    background: #fff;
+    color: #000;
+    font-family: sans-serif;
+    cursor: default;
+}
+
+/* template tags and variables */
+span.emailtemplates-tag {
+    padding: 0 3px;
+    border-radius: 3px;
+    background: #e8f0fe;
+    color: #1a56b8;
+    font-family: monospace;
+    font-size: 0.9em;
+}

@@ -1,12 +1,15 @@
 # coding=utf-8
+from importlib import import_module
+
 import mock
+from django.apps import apps
 from django.contrib.auth.models import Permission, User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from ..models import EmailTemplate
 from ..registry import email_templates
-from ..views import diff_rows
+from ..views import diff_table
 
 TITLE = "default_version.html"
 LANGUAGE = "pl"
@@ -126,12 +129,14 @@ class DefaultVersionAdminTest(FileTestCase):
         self.assertContains(response, "&lt;p&gt;Mine&lt;/p&gt;")  # in srcdoc
         self.assertContains(response, "&lt;p&gt;Version 2&lt;/p&gt;")
         # the changed line side by side: the content on the left, the default on the right
+        self.assertContains(response, '<table class="diff"')
         self.assertContains(
-            response, '<td class="changed">&lt;p&gt;Mine&lt;/p&gt;</td>'
+            response, '<span class="diff_sub">&lt;p&gt;Mine&lt;/p&gt;</span>'
         )
         self.assertContains(
-            response, '<td class="changed">&lt;p&gt;Version 2&lt;/p&gt;</td>'
+            response, '<span class="diff_add">&lt;p&gt;Version&nbsp;2&lt;/p&gt;</span>'
         )
+        self.assertContains(response, "emailtemplates/default_version.css")
         self.assertContains(response, "Replace my content with the default version")
         self.assertNotContains(response, "Restore the content")
 
@@ -173,16 +178,33 @@ class DefaultVersionAdminTest(FileTestCase):
         )
 
 
-class DiffRowsTest(TestCase):
-    def test_lines_side_by_side(self):
-        rows = diff_rows("a\nb\nc\nd", "a\nB\nc\nnew\nd")
+class DiffTableTest(TestCase):
+    def test_lines_side_by_side_with_the_changes_marked(self):
+        table = diff_table("a\n<p>One</p>\nc", "a\n<p>Two</p>\nc\nnew")
+        self.assertIn("Your content", table)
+        self.assertIn("Default version", table)
+        self.assertIn('<span class="diff_sub">&lt;p&gt;One&lt;/p&gt;</span>', table)
+        self.assertIn('<span class="diff_add">&lt;p&gt;Two&lt;/p&gt;</span>', table)
+        self.assertIn('<span class="diff_add">new</span>', table)
+        # the lines are escaped
+        self.assertIn("&lt;", table)
+        self.assertNotIn("<p>", table)
+
+
+class SnapshotMigrationTest(TestCase):
+    def test_existing_templates_get_the_file_as_it_is_now(self):
+        migration = import_module(
+            "emailtemplates.migrations.0014_emailtemplate_preheader_default_content"
+        )
+        for title in ("blocks/order.html", "database_only.html"):
+            EmailTemplate.objects.create(
+                title=title, language=LANGUAGE, subject="S", content="<p>Edited</p>"
+            )
+        EmailTemplate.objects.update(default_content="")  # as before 3.0.0
+        migration.snapshot_default_content(apps, None)
+        with_file = EmailTemplate.objects.get(title="blocks/order.html")
+        self.assertIn("Order {{ number }}", with_file.default_content)
+        self.assertEqual(with_file.content, "<p>Edited</p>")
         self.assertEqual(
-            rows,
-            [
-                ((1, "a", ""), (1, "a", "")),
-                ((2, "b", "changed"), (2, "B", "changed")),
-                ((3, "c", ""), (3, "c", "")),
-                ((None, "", ""), (4, "new", "added")),
-                ((4, "d", ""), (5, "d", "")),
-            ],
+            EmailTemplate.objects.get(title="database_only.html").default_content, ""
         )

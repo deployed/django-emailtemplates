@@ -15,12 +15,11 @@ from emailtemplates.models import (
     EmailTemplate,
     MassEmailAttachment,
     MassEmailMessage,
-    rich_text_available,
 )
 from emailtemplates.registry import NotRegistered, email_templates
 from emailtemplates.rich_text import (
+    rich_text_available,
     rich_text_config,
-    rich_text_problem,
     unescape_template_tags,
 )
 from emailtemplates.widgets import (
@@ -125,7 +124,6 @@ class EmailTemplateAdminForm(forms.ModelForm):
             )
             self.fields["content"].widget = EmailContentEditor(
                 rich_text_config=self.get_rich_text_config(),
-                rich_text_problem=rich_text_problem(self.instance.content),
                 preview_url=self.get_admin_url("preview"),
             )
         else:
@@ -180,12 +178,8 @@ class EmailTemplateAdminForm(forms.ModelForm):
             return []
 
     def clean_content(self):
-        content = self.cleaned_data["content"]
-        if (
-            EmailContentEditor.submitted_editor(self.data, self.add_prefix("content"))
-            == "rich"
-        ):
-            content = unescape_template_tags(content)
+        # from either editor: template tags typed in the rich text editor come encoded
+        content = unescape_template_tags(self.cleaned_data["content"])
         try:
             Template(content)
         except TemplateSyntaxError as e:

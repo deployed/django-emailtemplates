@@ -12,6 +12,7 @@ from ..models import EmailLayout, EmailTemplate
 from ..registry import EmailTemplateRegistry, email_templates
 from ..rich_text import (
     misplaced_template_tags,
+    rich_text_available,
     rich_text_config,
     rich_text_problem,
     unescape_template_tags,
@@ -108,7 +109,10 @@ class RichTextConfigTest(TestCase):
         ):
             config = rich_text_config()
         self.assertEqual(config["license_key"], "gpl")
-        self.assertNotIn("content_css", config)
+        self.assertEqual(
+            config["content_css"],
+            ["default", "/static/emailtemplates/rich_text_content.css"],
+        )
         self.assertNotIn("setup", config)
         self.assertNotIn("image", config["plugins"])
 
@@ -154,7 +158,10 @@ class RichTextConfigTest(TestCase):
     def test_styles_of_the_layout_are_shown_in_the_editor(self):
         config = rich_text_config(styles=".btn { color: red; }")
         self.assertTrue(config["content_style"].endswith(".btn { color: red; }"))
-        self.assertIn(".emailtemplates-block", config["content_style"])
+
+    @override_settings(EMAILTEMPLATES_RICH_TEXT_CONFIG={"content_css": "/email.css"})
+    def test_styles_of_blocks_and_chips_can_be_replaced(self):
+        self.assertEqual(rich_text_config()["content_css"], "/email.css")
 
     @override_settings(
         EMAILTEMPLATES_RICH_TEXT_CONFIG={
@@ -166,6 +173,17 @@ class RichTextConfigTest(TestCase):
 
     def test_no_formats_button_without_style_formats(self):
         self.assertNotIn("styles", rich_text_config()["toolbar"])
+
+
+class RichTextAvailableTest(TestCase):
+    @override_settings(EMAILTEMPLATES_RICH_TEXT=True)
+    def test_available_when_opted_in_with_tinymce(self):
+        self.assertTrue(rich_text_available())
+        with mock.patch("emailtemplates.rich_text.TinyMCE", None):
+            self.assertFalse(rich_text_available())
+
+    def test_off_by_default(self):
+        self.assertFalse(rich_text_available())
 
 
 class CheckTest(TestCase):
@@ -190,12 +208,11 @@ class ContentEditorFormTest(TestCase):
             content="<p>Hello {{ first_name }}</p>",
         )
 
-    def get_form(self, editor="rich", **kwargs):
+    def get_form(self, **kwargs):
         data = {
             "title": TITLE,
             "subject": "Hello",
             "content": "<p>Hello {{ first_name }}</p>",
-            "content_editor": editor,
             "language": LANGUAGE,
             "ordering": 1,
             "created": "2026-01-01 10:00:00",
@@ -210,7 +227,6 @@ class ContentEditorFormTest(TestCase):
         html = str(form["content"])
         self.assertIn('data-start="rich"', html)
         self.assertIn('data-editor="rich"', html)
-        self.assertIn('name="content_editor" value="rich"', html)
 
     def test_editor_offers_the_variables_and_the_blocks_url_of_the_template(self):
         form = EmailTemplateAdminForm(instance=self.email_template)
@@ -230,12 +246,20 @@ class ContentEditorFormTest(TestCase):
         self.assertIn('data-start="html"', html)
         self.assertIn("{% if x %}, {% endif %}", html)
 
+    def test_the_submitted_content_decides_the_editor(self):
+        # e.g. the form is shown again with errors: the content is the one submitted
+        form = self.get_form(content=MISPLACED, subject="")
+        html = str(form["content"])
+        self.assertIn('data-start="html"', html)
+        self.assertIn("{% if x %}, {% endif %}", html)
+
     def test_messages_for_switching_are_passed_to_the_script(self):
         problems = editor_options(EmailTemplateAdminForm(instance=self.email_template))[
             "problems"
         ]
         self.assertIn("%(tags)s", problems["misplaced"])
         self.assertIn("{% extends %}", problems["extends"])
+        self.assertIn("%(tags)s", problems["changed"])
 
     @override_settings(EMAILTEMPLATES_RICH_TEXT=False)
     def test_html_code_only_when_rich_text_is_off(self):
@@ -260,14 +284,15 @@ class ContentEditorFormTest(TestCase):
             form.cleaned_data["content"], "<p>{% if count > 1 %}Hi{% endif %}</p>"
         )
 
-    def test_html_code_is_saved_as_typed(self):
-        form = self.get_form(editor="html", content="<p>{{ a|default:'&gt;' }}</p>")
+    def test_html_outside_template_tags_is_saved_as_typed(self):
+        form = self.get_form(content="<p>a &gt; b {{ a|default:'&gt;' }}</p>")
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.cleaned_data["content"], "<p>{{ a|default:'&gt;' }}</p>")
+        self.assertEqual(
+            form.cleaned_data["content"], "<p>a &gt; b {{ a|default:'>' }}</p>"
+        )
 
     def test_html_code_may_use_extends_without_a_layout(self):
         form = self.get_form(
-            editor="html",
             content="{% extends 'emails/base.html' %}{% block body %}Hi{% endblock %}",
         )
         self.assertTrue(form.is_valid(), form.errors)

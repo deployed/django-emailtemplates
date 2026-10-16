@@ -3,7 +3,6 @@ import logging
 import os
 import re
 
-from django.apps import apps
 from django.conf import settings
 from django.db import models
 from django.template import TemplateDoesNotExist
@@ -26,17 +25,6 @@ logger = logging.getLogger(__name__)
 # wrapped in a layout. Such content is left untouched, see `EmailTemplate.get_content()`.
 EXTENDS_TAG_RE = re.compile(r"{%\s*extends[\s%]")
 HEAD_END_RE = re.compile(r"</head\s*>", re.IGNORECASE)
-
-
-def rich_text_available():
-    """
-    The rich text editor is opted into with ``EMAILTEMPLATES_RICH_TEXT = True`` and needs
-    django-tinymce, see `emailtemplates.rich_text`. Without it the content is edited as
-    HTML code only, so projects having django-tinymce for other reasons keep that editor.
-    """
-    return getattr(settings, "EMAILTEMPLATES_RICH_TEXT", False) and apps.is_installed(
-        "tinymce"
-    )
 
 
 def _normalize(content):
@@ -246,7 +234,8 @@ class EmailTemplate(models.Model):
         updated the default content, which the Site Admin may take over, see
         `replace_with_default()`. Never applied by itself, the content may be edited.
 
-        False for templates without a snapshot of the file (created before 3.0.0).
+        False for templates without a snapshot of the file, e.g. those having no template
+        file when they were created or migrated to 3.0.0.
         """
         if not self.default_content:
             return False

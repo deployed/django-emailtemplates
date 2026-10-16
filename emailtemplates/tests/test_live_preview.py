@@ -54,9 +54,7 @@ class LivePreviewTest(TestCase):
         self.assertIsNone(self.email_template.layout)
 
     def test_template_tags_encoded_by_the_rich_text_editor_are_fixed(self):
-        result = self.preview(
-            content="<p>{% if 2 &gt; 1 %}Yes{% endif %}</p>", content_editor="rich"
-        )
+        result = self.preview(content="<p>{% if 2 &gt; 1 %}Yes{% endif %}</p>")
         self.assertEqual(result["html"], "<p>Yes</p>")
 
     def test_without_a_layout(self):

@@ -124,8 +124,8 @@ in the HTML. There the Site Admin may replace the content with the default versi
 restore the replaced content afterwards (``EmailTemplate.previous_content``). In code:
 ``has_new_default()``, ``replace_with_default()`` and ``restore_previous_content()``.
 
-Templates created before 3.0.0 have no snapshot, so they never report a new default
-version, but they can be compared and replaced all the same.
+Templates created before 3.0.0 get the file as it is during the migration to 3.0.0
+(``0014``) as their snapshot, so changes of the file made after it are reported.
 
 Creating email templates
 ------------------------
@@ -160,32 +160,6 @@ The migration depends on the migration of this app adding ``default_content``
                     "layout": layout,
                 },
             )
-
-Sending through django-post_office
-----------------------------------
-
-To send emails through the mail queue of `django-post_office`_ (priorities, retries,
-logs), render them here and pass the result to ``mail.send()`` or ``mail.send_many()``
-instead of a post_office template::
-
-    from post_office import mail
-    from emailtemplates.contrib.post_office import render_for_post_office
-
-    mail.send(
-        recipients=[user.email],
-        priority="now",
-        headers={"Reply-To": "office@example.com"},
-        **render_for_post_office(
-            "emails/welcome.html", {"first_name": user.first_name}, language="pl"
-        )
-    )
-
-``render_for_post_office()`` returns ``subject``, ``message`` (the plain text),
-``html_message`` and, when the template has attachments sent as files, ``attachments``.
-The sender, the headers and the delivery options are passed to ``mail.send()`` directly.
-post_office renders nothing, so its own ``EmailTemplate`` model is not used.
-
-.. _django-post_office: https://github.com/ui/django-post_office
 
 Settings
 --------
@@ -270,8 +244,9 @@ developers) or a layout (frame in the database, for Site Admins).
 Previews
 --------
 
-* *Show email preview* on an email template renders the template together with its
-  layout, filled with the example context from the registry. Example values of
+* *Show email preview* on an email template renders it with ``EmailFromTemplate``, as it
+  is sent - with its layout, subject, preheader and blocks - filled with the example
+  context from the registry. Example values of
   ``help_context`` are fixed; for real objects pass ``preview_context`` to ``register()``,
   a dict or a callable returning one, called on every preview, e.g.
   ``preview_context=lambda: {"order": Order.objects.first()}``.
@@ -322,8 +297,11 @@ links, simple tables and formatting. The frame of the email - logo, header, foot
 belongs in a layout, see `Email layouts`_. The toolbar starts with a *Variables* menu,
 inserting the variables of the context described at registration (``help_context``), and
 a *Blocks* menu, see `Blocks`_. Variables and template tags (``{% if %}``, ``{% for %}``,
-...) are shown as chips, typed as text, but removed as a whole; the content keeps them as
-plain ``{{ name }}`` and ``{% tag %}``.
+...) in the text are shown as chips, typed as text, but removed as a whole; the content
+keeps them as plain ``{{ name }}`` and ``{% tag %}``. Template tags in attribute values,
+e.g. ``href="{{ url }}"``, stay as they are. A paragraph holding only tags producing no
+output, e.g. ``{% if %}`` or ``{% endfor %}``, is saved as the bare tags, without the
+``<p>``, so it adds no gap to the email.
 
 The editor has its own TinyMCE configuration, made for emails
 (``emailtemplates.rich_text.RICH_TEXT_CONFIG``): URLs are kept as typed, so links may point
@@ -338,6 +316,12 @@ The live preview stands next to the editor when both fit, below it otherwise. Th
 takes at least 480px, or the ``width`` in pixels set in ``EMAILTEMPLATES_RICH_TEXT_CONFIG``
 (e.g. ``"width": 1000``): a wider editor moves the preview below it on narrower screens.
 The editor is never wider than its column, so it never runs into the preview.
+
+The styles of the editor and the previews (``emailtemplates/code_editor.css``,
+``emailtemplates/default_version.css``) are written for the default Django admin and use
+its colors; their rules are one class deep, so a project restyles them with a stylesheet
+of its own. Blocks and chips inside the rich text editor are styled by
+``emailtemplates/rich_text_content.css`` (TinyMCE ``content_css``).
 
 The content is shown in the editor with the ``styles`` of the email layout of the
 template. Classes of the layout, e.g. of a button, can be offered as TinyMCE
@@ -358,6 +342,9 @@ Limits of the rich text editor:
   outside the table or the list. Such content opens in the HTML code editor and cannot be
   switched to rich text; the message above the editor names the tags.
 * Content using ``{% extends %}`` cannot be edited as rich text either.
+* When opening the content, the editor checks that it keeps every template tag; content it
+  would change (e.g. a tag inside an HTML tag, ``<td {% if x %}class="x"{% endif %}>``)
+  stays in the HTML code editor, unchanged, with the tags named above the editor.
 * The editor encodes ``>``, ``<`` and ``&`` typed as text; inside ``{% %}`` and ``{{ }}``
   they are decoded again on save, so ``{% if count > 1 %}`` keeps working.
 
@@ -428,8 +415,6 @@ Changelog
 * ``EmailFromTemplate.render()`` returns ``RenderedEmail(subject, html, text)`` without
   sending, e.g. for sending through a mail queue. ``EmailFromTemplate.text`` holds the
   plain text after ``render_message()``.
-* ``emailtemplates.contrib.post_office.render_for_post_office()`` for sending through
-  the mail queue of django-post_office.
 * ``EMAILTEMPLATES_INLINE_CSS`` setting and the ``inline`` extra: CSS inlined into the
   sent emails, so that the styles of a layout apply to the content written in the rich
   text editor.

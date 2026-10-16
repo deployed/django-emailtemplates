@@ -12,7 +12,6 @@
         <span class="emailtemplates-content-editor__problem"></span>
       </div>
     {% endif %}
-    <input type="hidden" name="{{ widget.name }}_editor" value="{{ editor.start }}">
     {% include "django/forms/widgets/textarea.html" %}
   </div>
   {% if editor.preview_url %}

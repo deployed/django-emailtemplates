@@ -9,6 +9,9 @@
  * Also the "emailtemplates" TinyMCE plugin: the Variables and Blocks buttons, template tags
  * shown as chips removed as a whole, and blocks expanded into a preview with example data
  * when clicked.
+ *
+ * Content the rich text editor would change - template tags it would move, drop or alter -
+ * stays in the HTML code editor, see `richTextProblem()` and `startRichText()`.
  */
 (function () {
     "use strict";
@@ -21,6 +24,16 @@
     var VOID_ELEMENTS = ["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta",
         "source", "track", "wbr"];
     var EXTENDS_TAG_RE = /\{%\s*extends[\s%]/;
+    // Template tags producing no output of their own, e.g. {% if %}: a paragraph holding only
+    // these is saved as the bare tags, as they were typed in HTML code, not as an empty
+    // paragraph, which would add a gap to the email.
+    var STRUCTURAL_TAGS_RE = new RegExp("^(\\s*\\{%-?\\s*(load|if|elif|else|endif|for|empty|endfor|" +
+        "with|endwith|ifchanged|endifchanged|autoescape|endautoescape|spaceless|endspaceless|" +
+        "comment|endcomment|filter|endfilter|block|endblock)\\b(?:(?!%\\})[\\s\\S])*%\\})+\\s*$");
+    // The class of the chips template tags are shown as in the rich text editor.
+    var CHIP_CLASS = "emailtemplates-tag";
+    // Elements whose text is not shown as text, so it is not turned into chips.
+    var RAW_TEXT_ELEMENTS = ["script", "style", "textarea", "title"];
 
     /** Template tags placed between table rows, cells or list items, see misplaced_template_tags(). */
     function misplacedTemplateTags(html) {
@@ -55,6 +68,131 @@
         return misplaced.length ? problems.misplaced.replace("%(tags)s", misplaced.join(", ")) : "";
     }
 
+    /** The template tags of `html`, decoded and with collapsed whitespace, for comparing. */
+    function templateTags(html) {
+        var decoder = document.createElement("textarea");
+        return (html.match(TEMPLATE_TAG_RE) || []).map(function (tag) {
+            decoder.innerHTML = tag;
+            return decoder.value.replace(/[\s\u00a0]+/g, " ");
+        });
+    }
+
+    /** Template tags of `before` missing from `after`, e.g. those the rich text editor broke. */
+    function changedTemplateTags(before, after) {
+        var left = templateTags(after);
+        return templateTags(before).filter(function (tag) {
+            var index = left.indexOf(tag);
+            if (index === -1) {
+                return true;
+            }
+            left.splice(index, 1);
+            return false;
+        });
+    }
+
+    function hasClass(node, name) {
+        return (" " + (node.attr("class") || "") + " ").indexOf(" " + name + " ") !== -1;
+    }
+
+    /** Whether a node of the editor is in a chip or in a block, shown as a whole already. */
+    function insideChipOrBlock(node) {
+        for (var parent = node.parent; parent; parent = parent.parent) {
+            if (hasClass(parent, CHIP_CLASS) || hasClass(parent, "emailtemplates-block")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Template tags in text shown as chips: <span>s that cannot be edited, removed as a whole.
+     * Only text is searched, so tags in attribute values, e.g. href="{{ url }}", stay as they
+     * are; the chips are saved as the bare tags again, see `registerChipSerializer()`.
+     */
+    function registerChipParser(editor) {
+        var Node = tinymce.html.Node;
+        editor.parser.addNodeFilter("#text", function (nodes) {
+            nodes.forEach(function (node) {
+                var parent = node.parent;
+                if (!parent || RAW_TEXT_ELEMENTS.indexOf(parent.name) !== -1 || insideChipOrBlock(node)) {
+                    return;
+                }
+                var text = node.value;
+                var parts = text.split(new RegExp("(" + TEMPLATE_TAG_RE.source + ")"));
+                if (parts.length === 1) {
+                    return;
+                }
+                parts.forEach(function (part, index) {
+                    if (!part) {
+                        return;
+                    }
+                    var piece = new Node("#text", 3);
+                    piece.value = part;
+                    if (index % 2) {  // a template tag
+                        var chip = Node.create("span", {"class": CHIP_CLASS, contenteditable: "false"});
+                        chip.append(piece);
+                        piece = chip;
+                    }
+                    parent.insert(piece, node, true);
+                });
+                node.remove();
+            });
+        });
+    }
+
+    /** The text of a node of the editor, chips included. */
+    function nodeText(node) {
+        if (node.type === 3) {
+            return node.value || "";
+        }
+        var text = "";
+        for (var child = node.firstChild; child; child = child.next) {
+            text += nodeText(child);
+        }
+        return text;
+    }
+
+    /** A paragraph holding only text and chips, e.g. none of <a>, <strong> or <img>. */
+    function onlyText(paragraph) {
+        for (var child = paragraph.firstChild; child; child = child.next) {
+            var chip = child.name === "span" && hasClass(child, CHIP_CLASS);
+            if (child.type !== 3 && !chip && !child.attr("data-mce-bogus")) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function rawText(value) {
+        var node = new tinymce.html.Node("#text", 3);
+        node.value = value;
+        node.raw = true;
+        return node;
+    }
+
+    /**
+     * Chips saved as the bare template tags, kept as typed (e.g. {% if a > b %}, not
+     * {% if a &gt; b %}); paragraphs holding only template tags producing no output, such as
+     * {% if %} or {% endfor %}, saved as the bare tags, see `STRUCTURAL_TAGS_RE`.
+     */
+    function registerChipSerializer(editor) {
+        editor.serializer.addNodeFilter("p", function (nodes) {
+            nodes.forEach(function (paragraph) {
+                var text = nodeText(paragraph).replace(/\u00a0/g, " ");
+                if (paragraph.parent && onlyText(paragraph) && STRUCTURAL_TAGS_RE.test(text)) {
+                    paragraph.replace(rawText(text.trim()));
+                }
+            });
+        });
+        editor.serializer.addNodeFilter("span", function (nodes) {
+            nodes.forEach(function (span) {
+                if (span.parent && hasClass(span, CHIP_CLASS)) {
+                    span.replace(rawText(nodeText(span)));
+                }
+            });
+        });
+    }
+
     function registerPlugin() {
         if (!window.tinymce || tinymce.PluginManager.get("emailtemplates")) {
             return;
@@ -66,6 +204,11 @@
             options.register("emailtemplates_blocks_url", {processor: "string", default: ""});
             options.register("emailtemplates_labels", {processor: "object", default: {}});
             var labels = options.get("emailtemplates_labels");
+
+            editor.on("PreInit", function () {
+                registerChipParser(editor);
+                registerChipSerializer(editor);
+            });
 
             var variables = options.get("emailtemplates_variables");
             if (variables.length) {
@@ -153,7 +296,7 @@
      * shortly after a change. While the content cannot be rendered, e.g. a template tag is
      * being typed, the last preview stays, with the error below it.
      */
-    function livePreview(container, options, getContent, editorInput) {
+    function livePreview(container, options, getContent) {
         var pane = container.querySelector(".emailtemplates-content-editor__preview");
         var form = container.closest("form");
         if (!pane || !form || !options.previewUrl) {
@@ -167,7 +310,6 @@
         function refresh() {
             var data = new FormData();
             data.append("content", getContent());
-            data.append("content_editor", editorInput.value);
             data.append("csrfmiddlewaretoken", form.elements.csrfmiddlewaretoken.value);
             PREVIEW_FIELDS.forEach(function (name) {
                 if (form.elements[name]) {
@@ -177,6 +319,9 @@
             var request = ++latest;
             fetch(options.previewUrl, {method: "POST", body: data, credentials: "same-origin"})
                 .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error(response.status + " " + response.statusText);
+                    }
                     return response.json();
                 })
                 .then(function (result) {
@@ -186,6 +331,12 @@
                     errorText.textContent = result.error ? options.previewError + " " + result.error : "";
                     if (!result.error) {
                         iframe.srcdoc = result.html;
+                    }
+                })
+                .catch(function (error) {
+                    // e.g. the session expired or the server is down
+                    if (request === latest) {
+                        errorText.textContent = options.previewError + " " + error.message;
                     }
                 });
         }
@@ -212,7 +363,7 @@
     function ContentEditor(container) {
         var options = JSON.parse(container.dataset.contentEditor);
         var textarea = container.querySelector("textarea");
-        var editorInput = container.querySelector("input[type=hidden]");
+        var current = container.dataset.start;
         var buttons = container.querySelectorAll("[data-editor]");
         var problemText = container.querySelector(".emailtemplates-content-editor__problem");
         var codeMirror = null;
@@ -241,12 +392,20 @@
         }
 
         function startRichText() {
-            // template tags are shown as chips, removed as a whole and kept as typed
-            tinymce.init(Object.assign({}, options.richText, {
-                target: textarea,
-                noneditable_regexp: [TEMPLATE_TAG_RE]
-            })).then(function (editors) {
-                editors[0].on("input change undo redo ExecCommand", function () {
+            var original = textarea.value;
+            tinymce.init(Object.assign({}, options.richText, {target: textarea})).then(function (editors) {
+                var editor = editors[0];
+                // the last guard: content the editor changed the template tags of, e.g. ones
+                // in places HTML does not allow text, is edited as HTML code, unchanged
+                var changed = changedTemplateTags(original, editor.getContent());
+                if (changed.length) {
+                    editor.remove();
+                    textarea.value = original;
+                    startCode();
+                    show("html", options.problems.changed.replace("%(tags)s", changed.join(", ")));
+                    return;
+                }
+                editor.on("input change undo redo ExecCommand", function () {
                     updatePreview();
                 });
             });
@@ -261,7 +420,7 @@
         }
 
         function show(name, problem) {
-            editorInput.value = name;
+            current = name;
             buttons.forEach(function (button) {
                 button.setAttribute("aria-pressed", String(button.dataset.editor === name));
             });
@@ -271,7 +430,7 @@
         }
 
         function switchTo(name) {
-            if (name === editorInput.value) {
+            if (name === current) {
                 return;
             }
             if (name === "rich") {
@@ -302,7 +461,7 @@
             startCode();
         }
         show(container.dataset.start, container.dataset.problem);
-        updatePreview = livePreview(container, options, getContent, editorInput);
+        updatePreview = livePreview(container, options, getContent);
     }
 
     function init() {

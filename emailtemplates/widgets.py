@@ -6,8 +6,10 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 
 from emailtemplates.rich_text import (
+    CHANGED_PROBLEM,
     EXTENDS_PROBLEM,
     MISPLACED_PROBLEM,
+    rich_text_problem,
     tinymce_js_url,
 )
 
@@ -81,37 +83,33 @@ class EmailContentEditor(CodeEditorTextarea):
     buttons above the editor without saving (``content_editor.js``).
 
     `rich_text_config` - TinyMCE configuration, see `emailtemplates.rich_text`; without it
-    the content is edited as HTML code only.
-    `rich_text_problem` - why the content would not survive the rich text editor, which
-    then starts as the HTML code editor and cannot be switched to rich text.
+    the content is edited as HTML code only. Content that would not survive the rich text
+    editor, see `rich_text_problem()`, starts in the HTML code editor and cannot be
+    switched to rich text.
     `preview_url` - URL rendering the email as it would be sent, shown next to the editor
     and updated while the content is edited, see `EmailTemplatePreviewView`.
-
-    The editor the submitted content comes from is sent as ``<name>_editor``, see
-    `submitted_editor()`.
     """
 
     template_name = "emailtemplates/widgets/content_editor.html"
 
-    def __init__(
-        self, rich_text_config=None, rich_text_problem="", preview_url="", attrs=None
-    ):
+    def __init__(self, rich_text_config=None, preview_url="", attrs=None):
         super(EmailContentEditor, self).__init__(
             attrs=dict({"rows": 24}, **attrs or {})
         )
         # the code editor is started by content_editor.js, not by code_editor.js
         self.code_editor_options = self.attrs.pop("data-code-editor")
         self.rich_text_config = rich_text_config
-        self.rich_text_problem = rich_text_problem
         self.preview_url = preview_url
 
     def get_context(self, name, value, attrs):
         context = super(EmailContentEditor, self).get_context(name, value, attrs)
         rich_text = self.rich_text_config is not None
+        # the value rendered, e.g. the submitted one when the form has errors
+        problem = rich_text_problem(value) if rich_text else ""
         context["editor"] = {
             "rich_text": rich_text,
-            "start": "rich" if rich_text and not self.rich_text_problem else "html",
-            "problem": self.rich_text_problem,
+            "start": "rich" if rich_text and not problem else "html",
+            "problem": problem,
             "preview_url": self.preview_url,
             "width": self.get_editor_width(),
             "options": json.dumps(
@@ -123,6 +121,7 @@ class EmailContentEditor(CodeEditorTextarea):
                     "problems": {
                         "extends": str(EXTENDS_PROBLEM),
                         "misplaced": str(MISPLACED_PROBLEM),
+                        "changed": str(CHANGED_PROBLEM),
                     },
                 }
             ),
@@ -142,13 +141,6 @@ class EmailContentEditor(CodeEditorTextarea):
         if isinstance(width, str) and re.fullmatch(r"\s*\d+(\.\d+)?\s*px\s*", width):
             return int(float(width.strip()[:-2]))
         return None
-
-    @staticmethod
-    def submitted_editor(data, name):
-        """
-        "rich" or "html": the editor the submitted content of the field `name` comes from.
-        """
-        return "rich" if data.get("%s_editor" % name) == "rich" else "html"
 
     @property
     def media(self):

@@ -67,23 +67,16 @@
     margin-left: 12px;
 }
 
-/* EmailContentEditor: the buttons switching between the rich text and the HTML code editor */
-/* The whole width of the form row for the editor and the preview, also where the admin
-   theme puts the field into a narrow grid column, e.g. col-sm-7 of django-jazzmin */
-:has(> .emailtemplates-content-editor) {
-    flex: 1 1 100%;
-    max-width: 100%;
-}
-
+/* EmailContentEditor: the editor, with the buttons switching between rich text and HTML code,
+   and the live preview next to it. Styled for the default Django admin, with its colors;
+   every rule is one class deep, so a project restyles it with a stylesheet of its own. */
 .emailtemplates-content-editor {
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
-    flex: 1 1 auto;
-    min-width: 0;
+    width: 100%;
 }
 
-/* the editor and the live preview side by side, the preview below on narrow screens */
 /* the width of the rich text editor, when set in pixels, or 480px; with the preview next to
    it when both fit, the preview below otherwise */
 .emailtemplates-content-editor__editor {
@@ -109,6 +102,7 @@
 }
 
 .emailtemplates-content-editor__preview iframe {
+    box-sizing: border-box;
     display: block;
     width: 100%;
     height: 760px;
