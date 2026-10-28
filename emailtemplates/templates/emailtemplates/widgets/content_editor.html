@@ -1,0 +1,26 @@
+{% load i18n %}
+<div class="emailtemplates-content-editor"
+     data-content-editor="{{ editor.options }}"
+     data-start="{{ editor.start }}"
+     data-problem="{{ editor.problem }}"
+     {% if editor.width %}style="--emailtemplates-editor-width: {{ editor.width }}px"{% endif %}>
+  <div class="emailtemplates-content-editor__editor">
+    {% if editor.rich_text %}
+      <div class="emailtemplates-content-editor__switch">
+        <button type="button" class="button" data-editor="rich">{% translate "Rich text" %}</button>
+        <button type="button" class="button" data-editor="html">{% translate "HTML code" %}</button>
+        <span class="emailtemplates-content-editor__problem"></span>
+      </div>
+    {% endif %}
+    {% include "django/forms/widgets/textarea.html" %}
+  </div>
+  {% if editor.preview_url %}
+    <div class="emailtemplates-content-editor__preview">
+      <div class="emailtemplates-content-editor__preview-title">
+        {% translate "Preview with example data, not saved yet" %}
+      </div>
+      <iframe sandbox title="{% translate 'Preview' %}"></iframe>
+      <div class="emailtemplates-content-editor__preview-error"></div>
+    </div>
+  {% endif %}
+</div>

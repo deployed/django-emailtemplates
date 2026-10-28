@@ -59,6 +59,19 @@ class EmailLayoutTest(TestCase):
             "<div>HEADER</div><p>Hello</p><div>FOOTER</div>",
         )
 
+    def test_styles_go_into_the_head_of_a_whole_document(self):
+        self.layout.styles = "p { color: red; }"
+        self.layout.header_content = (
+            "<!DOCTYPE html><html><head><title>T</title></HEAD><body>"
+        )
+        self.layout.footer_content = "</body></html>"
+        self.assertEqual(
+            self.layout.wrap_content("<p>Hello</p>"),
+            "<!DOCTYPE html><html><head><title>T</title>"
+            '<style type="text/css">p { color: red; }</style></HEAD><body>'
+            "<p>Hello</p></body></html>",
+        )
+
     def test_blank_styles_produce_no_style_tag(self):
         self.layout.styles = "   \n  "
         self.assertNotIn("<style", self.layout.wrap_content("<p>Hello</p>"))
@@ -208,6 +221,7 @@ class EmailTemplateAdminFormTest(TestCase):
             "title": TITLE,
             "layout": self.layout.pk,
             "subject": "Subject",
+            "editor": "html",
             "content": "<p>Hello</p>",
             "language": LANGUAGE,
             "ordering": 1,
@@ -249,7 +263,9 @@ class EmailLayoutAdminTest(TestCase):
     def setUp(self):
         self.model_admin = EmailLayoutAdmin(EmailLayout, admin.site)
         self.request = RequestFactory().get("/")
-        self.request.user = User.objects.create_superuser("admin", "admin@example.com", "x")
+        self.request.user = User.objects.create_superuser(
+            "admin", "admin@example.com", "x"
+        )
 
     def test_email_templates_of_all_layouts_are_listed_in_two_queries(self):
         for name in ("First", "Second", "Third"):
@@ -265,4 +281,6 @@ class EmailLayoutAdminTest(TestCase):
                 for layout in self.model_admin.get_queryset(self.request)
             ]
 
-        self.assertEqual(listed, ["First.html", "Second.html", "Third.html", "not used"])
+        self.assertEqual(
+            listed, ["First.html", "Second.html", "Third.html", "not used"]
+        )

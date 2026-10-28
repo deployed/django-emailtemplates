@@ -3,8 +3,8 @@ import logging
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.template import Template
-from django.template import TemplateSyntaxError
+from django.template import Template, TemplateSyntaxError
+from django.urls import NoReverseMatch, reverse
 from django.utils.functional import lazy
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
@@ -16,8 +16,17 @@ from emailtemplates.models import (
     MassEmailAttachment,
     MassEmailMessage,
 )
-from emailtemplates.registry import email_templates
-from emailtemplates.widgets import CodeEditorTextarea, EmailFrameWidget
+from emailtemplates.registry import NotRegistered, email_templates
+from emailtemplates.rich_text import (
+    rich_text_available,
+    rich_text_config,
+    unescape_template_tags,
+)
+from emailtemplates.widgets import (
+    CodeEditorTextarea,
+    EmailContentEditor,
+    EmailFrameWidget,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,13 +104,14 @@ class EmailTemplateAdminForm(forms.ModelForm):
             "title",
             "layout",
             "subject",
+            "preheader",
             "content",
             "language",
             "ordering",
             "created",
             "modified",
         ]
-        widgets = {"content": CodeEditorTextarea(attrs={"rows": 24})}
+        widgets = {"content": EmailContentEditor()}
 
     def __init__(self, *args, **kwargs):
         super(EmailTemplateAdminForm, self).__init__(*args, **kwargs)
@@ -112,13 +122,64 @@ class EmailTemplateAdminForm(forms.ModelForm):
             self.fields["title"].widget = forms.TextInput(
                 attrs={"readonly": "readonly", "style": "width:480px"}
             )
+            self.fields["content"].widget = EmailContentEditor(
+                rich_text_config=self.get_rich_text_config(),
+                preview_url=self.get_admin_url("preview"),
+            )
         else:
             self.fields["content"].widget = forms.HiddenInput()
             self.fields["content"].required = False
             self.fields["subject"].widget = forms.HiddenInput()
+            self.fields["preheader"].widget = forms.HiddenInput()
+
+    def get_rich_text_config(self):
+        """
+        TinyMCE configuration of the content, None when the rich text editor is off.
+        """
+        if not rich_text_available():
+            return None
+        layout = self.instance.layout
+        return rich_text_config(
+            variables=self.get_variables(),
+            blocks=self.get_blocks(),
+            styles=layout.styles if layout else "",
+            blocks_url=self.get_admin_url("blocks"),
+        )
+
+    def get_admin_url(self, name):
+        """
+        URL of an admin view of this template added by `EmailTemplateAdmin.get_urls()`:
+        "blocks" (rendered with example data) or "preview" (the live preview).
+        """
+        try:
+            return reverse(
+                "admin:emailtemplates_emailtemplate_%s" % name, args=[self.instance.pk]
+            )
+        except NoReverseMatch:  # the admin is registered on another site
+            return ""
+
+    def get_variables(self):
+        """
+        (name, description) pairs of the context of this template, from the registry.
+        """
+        try:
+            help_context = email_templates.get_help_context(self.instance.title)
+        except NotRegistered:
+            return []
+        return sorted(help_context.items())
+
+    def get_blocks(self):
+        """
+        Blocks this template may use, from the registry.
+        """
+        try:
+            return email_templates.get_blocks(self.instance.title)
+        except NotRegistered:
+            return []
 
     def clean_content(self):
-        content = self.cleaned_data["content"]
+        # from either editor: template tags typed in the rich text editor come encoded
+        content = unescape_template_tags(self.cleaned_data["content"])
         try:
             Template(content)
         except TemplateSyntaxError as e:
@@ -127,8 +188,7 @@ class EmailTemplateAdminForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super(EmailTemplateAdminForm, self).clean()
-        layout = cleaned_data.get("layout")
-        if not layout:
+        if not cleaned_data.get("layout"):
             return cleaned_data
 
         content = cleaned_data.get("content")
@@ -138,7 +198,6 @@ class EmailTemplateAdminForm(forms.ModelForm):
             content = EmailTemplate(
                 title=cleaned_data.get("title") or ""
             ).get_default_content()
-
         if EXTENDS_TAG_RE.search(content or ""):
             self.add_error(
                 "layout",

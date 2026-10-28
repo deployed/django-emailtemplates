@@ -1,7 +1,19 @@
 # coding=utf-8
 import json
+import re
 
 from django import forms
+from django.utils.translation import gettext_lazy as _
+
+from emailtemplates.rich_text import (
+    CHANGED_PROBLEM,
+    EXTENDS_PROBLEM,
+    MISPLACED_PROBLEM,
+    rich_text_problem,
+    tinymce_js_url,
+)
+
+PREVIEW_ERROR = _("The preview could not be updated:")
 
 
 class CodeEditorTextarea(forms.Textarea):
@@ -63,3 +75,80 @@ class EmailFrameWidget(forms.MultiWidget):
 
     def decompress(self, value):
         return list(value) if value else ["", ""]
+
+
+class EmailContentEditor(CodeEditorTextarea):
+    """
+    Content of an email template, edited as rich text or as HTML code, switched with the
+    buttons above the editor without saving (``content_editor.js``).
+
+    `rich_text_config` - TinyMCE configuration, see `emailtemplates.rich_text`; without it
+    the content is edited as HTML code only. Content that would not survive the rich text
+    editor, see `rich_text_problem()`, starts in the HTML code editor and cannot be
+    switched to rich text.
+    `preview_url` - URL rendering the email as it would be sent, shown next to the editor
+    and updated while the content is edited, see `EmailTemplatePreviewView`.
+    """
+
+    template_name = "emailtemplates/widgets/content_editor.html"
+
+    def __init__(self, rich_text_config=None, preview_url="", attrs=None):
+        super(EmailContentEditor, self).__init__(
+            attrs=dict({"rows": 24}, **attrs or {})
+        )
+        # the code editor is started by content_editor.js, not by code_editor.js
+        self.code_editor_options = self.attrs.pop("data-code-editor")
+        self.rich_text_config = rich_text_config
+        self.preview_url = preview_url
+
+    def get_context(self, name, value, attrs):
+        context = super(EmailContentEditor, self).get_context(name, value, attrs)
+        rich_text = self.rich_text_config is not None
+        # the value rendered, e.g. the submitted one when the form has errors
+        problem = rich_text_problem(value) if rich_text else ""
+        context["editor"] = {
+            "rich_text": rich_text,
+            "start": "rich" if rich_text and not problem else "html",
+            "problem": problem,
+            "preview_url": self.preview_url,
+            "width": self.get_editor_width(),
+            "options": json.dumps(
+                {
+                    "code": json.loads(self.code_editor_options),
+                    "richText": self.rich_text_config,
+                    "previewUrl": self.preview_url,
+                    "previewError": str(PREVIEW_ERROR),
+                    "problems": {
+                        "extends": str(EXTENDS_PROBLEM),
+                        "misplaced": str(MISPLACED_PROBLEM),
+                        "changed": str(CHANGED_PROBLEM),
+                    },
+                }
+            ),
+        }
+        return context
+
+    def get_editor_width(self):
+        """
+        The width in pixels set for the rich text editor (``"width": 1000`` or ``"1000px"`` in
+        EMAILTEMPLATES_RICH_TEXT_CONFIG): the least width of the editor column, so that the
+        preview goes below the editor when both do not fit side by side. None otherwise,
+        e.g. for ``"100%"``.
+        """
+        width = (self.rich_text_config or {}).get("width")
+        if isinstance(width, (int, float)) and not isinstance(width, bool):
+            return int(width)
+        if isinstance(width, str) and re.fullmatch(r"\s*\d+(\.\d+)?\s*px\s*", width):
+            return int(float(width.strip()[:-2]))
+        return None
+
+    @property
+    def media(self):
+        js = list(CodeEditorTextarea.Media.js)
+        js.remove("emailtemplates/code_editor.js")
+        if self.rich_text_config is not None:
+            js.insert(0, tinymce_js_url())
+        return forms.Media(
+            css=CodeEditorTextarea.Media.css,
+            js=js + ["emailtemplates/content_editor.js"],
+        )
