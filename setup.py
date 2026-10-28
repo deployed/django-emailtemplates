@@ -17,7 +17,7 @@ tests_require = [
 
 setup(
     name='django-emailtemplates',
-    version='3.0.0',
+    version='3.0.0-alpha',
     packages=find_packages(),
     package_data={'emailtemplates': ['locale/*/LC_MESSAGES/*.po', 'locale/*/LC_MESSAGES/*.mo']},
     include_package_data=True,
