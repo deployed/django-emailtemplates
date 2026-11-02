@@ -14,12 +14,15 @@ from django.db import transaction
 from django.template import Context, Template, TemplateDoesNotExist
 from django.template.loader import get_template
 
-from .attachments import (  # noqa: F401 - encode/decode kept importable from here
+from .history import (  # noqa: F401 - importable from here too
     attachments_enabled,
+    celery_enabled,
     decode_attachments,
+    deliver_later,
+    deliver_now,
     encode_attachments,
-    keep_attachment,
     message_attachments,
+    resend,
     store_attachments,
 )
 from .managers import EmailContent
@@ -55,69 +58,6 @@ def finalize_html(html):
     Rendered HTML of an email as it is sent, see `EMAILTEMPLATES_INLINE_CSS`.
     """
     return inline_css(html) if inline_css_enabled() else html
-
-
-def celery_enabled():
-    return getattr(settings, "EMAILTEMPLATES_CELERY", False)
-
-
-def deliver_later(email_log, attachments=None):
-    """
-    Sends the email of `email_log` once the current transaction is committed: by the Celery
-    task of `emailtemplates.tasks` with ``EMAILTEMPLATES_CELERY = True``, otherwise right
-    away. `attachments` - (filename, content[, mimetype]) tuples, never saved; by default
-    the attachments of its email template and the ones kept with it, see `EmailLog`.
-    """
-    if celery_enabled():
-        from .tasks import send_email
-
-        encoded = None if attachments is None else encode_attachments(attachments)
-        transaction.on_commit(lambda: send_email.delay(email_log.pk, encoded))
-    else:
-        transaction.on_commit(lambda: deliver_now(email_log, attachments))
-
-
-def deliver_now(email_log, attachments=None):
-    """
-    Sends the email of `email_log`; an error is recorded in it and logged, not raised.
-    """
-    try:
-        email_log.deliver(attachments)
-    except Exception as e:
-        logger.error("Problem sending email to %s: %s", email_log.recipients, e)
-
-
-def resend(email_log):
-    """
-    Sends a failed email again, as a new entry of the history, see `deliver_later()`: with
-    the attachments of its email template and the ones kept with it. Raises ValueError when
-    an attachment cannot be attached again, see `EmailLog.missing_attachments()`, rather
-    than sending the email without it.
-    """
-    email_log = EmailLog.objects.get(pk=email_log.pk)
-    missing = email_log.missing_attachments()
-    if missing:
-        raise ValueError(
-            "The attachments %s of the email cannot be attached again."
-            % ", ".join(missing)
-        )
-    kept = email_log.kept_attachments()
-    template_attachments = email_log.template_attachments()
-    email_log.pk = None
-    email_log.status = EmailLog.PENDING
-    email_log.attempts = 0
-    email_log.last_error = ""
-    email_log.sent_at = None
-    email_log.source = email_log.source_id = ""
-    email_log.source_seq = 0
-    email_log.source_context = {}
-    email_log.created = now()
-    email_log.attachments = [name for name, *_rest in template_attachments + kept]
-    email_log.save()
-    for attachment in kept:
-        keep_attachment(email_log, *attachment)
-    deliver_later(email_log)
-    return email_log
 
 
 class RenderedEmail(NamedTuple):
@@ -183,8 +123,8 @@ class EmailFromTemplate(object):
         self.text = ""  # plain text body, generated from the HTML one
         self._template_source = "default"
         # the attachments of the email template, not kept with the email log, see
-        # emailtemplates.attachments
-        self.template_attachment_names = []
+        # emailtemplates.history
+        self.template_attachments = []
 
     @property
     def template_source(self):
@@ -327,7 +267,7 @@ class EmailFromTemplate(object):
         # for the history of sent emails, see EmailContent.from_message()
         msg.email_template = self.name
         msg.email_language = self.language
-        msg.email_template_attachments = self.template_attachment_names
+        msg.email_template_attachments = self.template_attachments
         if attachment_paths:
             for path in attachment_paths:
                 msg.attach_file(path)
@@ -394,7 +334,7 @@ class EmailFromTemplate(object):
              return eft.sent
         """
         attachments = self.get_default_attachments(as_links=False)
-        self.template_attachment_names = [name for name, content in attachments]
+        self.template_attachments = list(attachments)
         attachments.extend(kwargs.pop("attachments", []))
 
         self.render()
@@ -413,19 +353,20 @@ class EmailFromTemplate(object):
         cannot be passed, the email is sent by the default mail backend.
         """
         attachments = self.get_default_attachments(as_links=False)
-        self.template_attachment_names = [name for name, content in attachments]
+        self.template_attachments = list(attachments)
         attachments.extend(kwargs.pop("attachments", []))
         self.render()
         msg = self.get_message_object(
             to, attachment_paths, attachments=attachments, **kwargs
         )
-        email_log = EmailLog.objects.create(
-            status=EmailLog.PENDING, **asdict(EmailContent.from_message(msg))
-        )
-        if attachments_enabled():
-            # sent with the attachments of the template and the ones kept with it
-            store_attachments(email_log, msg)
-            deliver_later(email_log)
-        else:
-            deliver_later(email_log, message_attachments(msg))
+        with transaction.atomic():
+            email_log = EmailLog.objects.create(
+                status=EmailLog.PENDING, **asdict(EmailContent.from_message(msg))
+            )
+            if attachments_enabled():
+                # sent with the attachments of the template and the ones kept with it
+                store_attachments(email_log, msg)
+                deliver_later(email_log)
+            else:
+                deliver_later(email_log, message_attachments(msg))
         return email_log

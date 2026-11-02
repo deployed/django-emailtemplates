@@ -1,14 +1,14 @@
 # coding=utf-8
 from django.core.management.base import BaseCommand
 
-from emailtemplates.models import cleanup_email_logs
+from emailtemplates.history import cleanup_email_logs
 
 
 class Command(BaseCommand):
     help = (
-        "Deletes the sent emails older than the given number of days, and the attachment "
-        "files of sent emails past EMAILTEMPLATES_EMAIL_LOG_ATTACHMENT_RETENTION_DAYS; "
-        "pending and failed ones are kept."
+        "Deletes the sent emails older than the given number of days, the attachments of "
+        "sent emails past EMAILTEMPLATES_EMAIL_LOG_ATTACHMENT_RETENTION_DAYS and the "
+        "attachment files no email uses; pending and failed ones are kept."
     )
 
     def add_arguments(self, parser):

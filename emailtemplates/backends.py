@@ -25,8 +25,9 @@ from django.core.mail import get_connection
 from django.core.mail.backends.base import BaseEmailBackend
 from django.db import models
 
-from .attachments import store_attachments
+from .history import record_sent, store_attachments
 from .managers import EmailContent, EmailSource
+from .models import EmailLog
 from .utils import suppress_and_log
 
 try:
@@ -131,10 +132,9 @@ class EmailLogBackendMixin:
         """
         A pending entry for every message, in the same order; None for a message whose
         entry could not be written (logged, not raised). A message of
-        `EmailLog.get_message()` brings its entry, see `EmailFromTemplate.send_later()`.
+        `emailtemplates.history.get_message()` brings its entry, see
+        `EmailFromTemplate.send_later()`.
         """
-        from .models import EmailLog
-
         email_logs = []
         for message, source in zip(messages, cls.get_email_sources(len(messages))):
             email_log = None
@@ -165,7 +165,7 @@ class EmailLogBackendMixin:
         with suppress_and_log(
             message="Could not mark email log %s sent" % email_log.pk
         ):
-            email_log.mark_sent()
+            record_sent(email_log)
 
     @staticmethod
     def record_failure(email_log, error):

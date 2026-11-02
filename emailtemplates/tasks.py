@@ -18,9 +18,9 @@ from celery import Task, shared_task
 from django.conf import settings
 
 from .backends import task_context
-from .attachments import decode_attachments
+from .history import cleanup_email_logs as cleanup_email_logs_now
+from .history import decode_attachments, deliver
 from .models import EmailLog
-from .models import cleanup_email_logs as cleanup_email_logs_now
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ if getattr(settings, "EMAILTEMPLATES_CELERY_QUEUE", None):
 def send_email(email_log_id, attachments=None):
     """
     Sends the email of the `EmailLog` of `email_log_id`, unless it is gone or sent already.
-    `attachments` - see `emailtemplates.attachments.encode_attachments()`; by default the
+    `attachments` - see `emailtemplates.history.encode_attachments()`; by default the
     attachments of its email template and the ones kept with it.
     """
     email_log = EmailLog.objects.filter(pk=email_log_id).first()
@@ -97,14 +97,14 @@ def send_email(email_log_id, attachments=None):
         return 0
     if attachments is not None:
         attachments = decode_attachments(attachments)
-    return email_log.deliver(attachments)
+    return deliver(email_log, attachments)
 
 
 @shared_task
 def cleanup_email_logs(retention_days=None):
     """
-    Deletes the sent emails, and the attachment files of sent emails, past their retention;
-    pending and failed ones are kept, see `emailtemplates.models.cleanup_email_logs()`.
+    Deletes the sent emails, and the attachments of sent emails, past their retention;
+    pending and failed ones are kept, see `emailtemplates.history.cleanup_email_logs()`.
     """
     emails, files = cleanup_email_logs_now(retention_days)
     if emails or files:

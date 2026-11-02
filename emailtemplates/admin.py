@@ -15,7 +15,7 @@ from .forms import (
     MassEmailAttachmentForm,
     MassEmailMessageForm,
 )
-from .email import resend
+from .history import attachment_name, missing_attachments, resend
 from .models import (
     EmailAttachment,
     EmailLayout,
@@ -315,15 +315,16 @@ class EmailLogAdmin(admin.ModelAdmin):
     @admin.display(description=_("attachments"))
     def show_attachments(self, obj):
         """
-        The names of the attachments; the ones kept as files can be attached again.
+        The names of the attachments; the kept ones can be attached again.
         """
         if not obj.attachments:
             return "-"
-        kept = set(obj.attachment_files.values_list("name", flat=True))
+        kept = set(obj.kept_attachments.values_list("name", flat=True))
+        names = [attachment_name(name) for name in obj.attachments]
         return format_html_join(
             mark_safe("<br>"),
             "{} {}",
-            ((name, _("(kept)") if name in kept else "") for name in obj.attachments),
+            ((name, _("(kept)") if name in kept else "") for name in names),
         )
 
     @admin.display(description=_("HTML"))
@@ -388,9 +389,9 @@ class EmailLogAdmin(admin.ModelAdmin):
                 # not failed, or without the content, see EMAILTEMPLATES_EMAIL_LOG_CONTENT
                 skipped += 1
                 continue
-            missing = email_log.missing_attachments()
+            missing = missing_attachments(email_log)
             if missing:
-                # never sent without them, see EmailLog.missing_attachments()
+                # never sent without them, see emailtemplates.history.missing_attachments()
                 self.message_user(
                     request,
                     _(

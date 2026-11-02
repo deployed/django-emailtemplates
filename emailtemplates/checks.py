@@ -61,7 +61,8 @@ def check_celery(app_configs, **kwargs):
 def check_email_backend(app_configs, **kwargs):
     """
     The history of sent emails (Email logs) is written by the email backend; a project
-    setting EMAIL_BACKEND, e.g. from an EMAIL_URL, may leave it out by mistake.
+    setting EMAIL_BACKEND again, e.g. in the settings of one environment, may leave it out
+    by mistake.
     """
     try:
         backend = import_string(settings.EMAIL_BACKEND)

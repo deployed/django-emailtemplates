@@ -4,12 +4,44 @@ The manager of `emailtemplates.models.EmailLog`, and what it records: `EmailCont
 email, and `EmailSource`, what sent it.
 """
 
+import mimetypes
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 
 from django.conf import settings
 from django.db import models
 from django.utils.timezone import now
+
+
+# the name of an attachment without one, e.g. of a MIME part without a filename
+DEFAULT_ATTACHMENT_NAME = "attachment"
+
+
+def attachment_name(filename, mimetype=None):
+    """
+    `filename`, or for an attachment without one "attachment" with the extension of its
+    type, e.g. "attachment.gif", as email clients name it.
+    """
+    if filename:
+        return filename
+    return DEFAULT_ATTACHMENT_NAME + (mimetypes.guess_extension(mimetype or "") or "")
+
+
+def message_attachments(message):
+    """
+    The attachments of `message` as (filename, content, mimetype) triples, MIME parts
+    included, so that they can be attached to an email again.
+    """
+    attachments = []
+    for attachment in message.attachments:
+        if isinstance(attachment, tuple):
+            filename, content, mimetype = attachment
+        else:  # a MIME part, e.g. attached with message.attach(mime_part)
+            filename = attachment.get_filename()
+            content = attachment.get_payload(decode=True)
+            mimetype = attachment.get_content_type()
+        attachments.append((attachment_name(filename, mimetype), content, mimetype))
+    return attachments
 
 
 @dataclass(frozen=True)
@@ -74,14 +106,7 @@ class EmailContent:
             headers=dict(message.extra_headers),
             html=html,
             text=text,
-            attachments=[
-                (
-                    attachment[0]
-                    if isinstance(attachment, tuple)
-                    else attachment.get_filename()
-                )
-                for attachment in message.attachments
-            ],
+            attachments=[name for name, *_rest in message_attachments(message)],
         )
 
 
