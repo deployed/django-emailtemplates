@@ -3,7 +3,7 @@ from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponseRedirect
 from django.urls import path, reverse
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
@@ -263,7 +263,7 @@ class EmailLogAdmin(admin.ModelAdmin):
                     "bcc",
                     "reply_to",
                     "subject",
-                    "attachments",
+                    "show_attachments",
                 ]
             },
         ),
@@ -310,6 +310,20 @@ class EmailLogAdmin(admin.ModelAdmin):
             '<span class="emailtemplates-status emailtemplates-status--{}">{}</span>',
             obj.status,
             obj.get_status_display(),
+        )
+
+    @admin.display(description=_("attachments"))
+    def show_attachments(self, obj):
+        """
+        The names of the attachments; the ones kept as files can be attached again.
+        """
+        if not obj.attachments:
+            return "-"
+        kept = set(obj.attachment_files.values_list("name", flat=True))
+        return format_html_join(
+            mark_safe("<br>"),
+            "{} {}",
+            ((name, _("(kept)") if name in kept else "") for name in obj.attachments),
         )
 
     @admin.display(description=_("HTML"))
@@ -370,11 +384,25 @@ class EmailLogAdmin(admin.ModelAdmin):
     def resend(self, request, email_logs):
         sent, skipped = 0, 0
         for email_log in email_logs:
-            if email_log.can_resend() and (email_log.html or email_log.text):
-                resend(email_log)
-                sent += 1
-            else:  # not failed, or without the content, see EMAILTEMPLATES_EMAIL_LOG_CONTENT
+            if not email_log.can_resend() or not (email_log.html or email_log.text):
+                # not failed, or without the content, see EMAILTEMPLATES_EMAIL_LOG_CONTENT
                 skipped += 1
+                continue
+            missing = email_log.missing_attachments()
+            if missing:
+                # never sent without them, see EmailLog.missing_attachments()
+                self.message_user(
+                    request,
+                    _(
+                        "%(email)s was not sent again: its attachments %(attachments)s "
+                        "are not kept."
+                    )
+                    % {"email": email_log, "attachments": ", ".join(missing)},
+                    messages.WARNING,
+                )
+                continue
+            resend(email_log)
+            sent += 1
         if sent:
             self.message_user(
                 request,

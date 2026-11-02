@@ -12,10 +12,11 @@ from django.core.files.base import ContentFile
 from django.core.mail import send_mail
 from django.core.mail.backends.locmem import EmailBackend as LocMemEmailBackend
 from django.core.management import call_command
+from django.core.files.storage import default_storage
 from django.test import TestCase, override_settings
 
 from ..backends import EmailLogBackendMixin
-from ..checks import check_celery
+from ..checks import check_celery, check_email_backend
 from ..email import (
     EmailFromTemplate,
     decode_attachments,
@@ -23,7 +24,13 @@ from ..email import (
     resend,
 )
 from ..managers import EmailContent, EmailSource
-from ..models import EmailAttachment, EmailLog, EmailTemplate, now
+from ..models import (
+    EmailAttachment,
+    EmailLog,
+    EmailLogAttachment,
+    EmailTemplate,
+    now,
+)
 from ..tasks import EmailTask, cleanup_email_logs, send_email
 
 TITLE = "email_log.html"
@@ -41,6 +48,13 @@ class LoggingLocMemBackend(EmailLogBackendMixin, LocMemEmailBackend):
 def send_two_emails(name):
     send_mail("First", "Hello %s" % name, None, ["first@example.com"])
     send_mail("Second", "Hello %s" % name, None, ["second@example.com"])
+
+
+@shared_task(base=EmailTask, autoretry_for=(SMTPException,), max_retries=1)
+def send_certificate():
+    message = mail.EmailMessage("Certificate", "Attached", None, ["first@example.com"])
+    message.attach("certificate.pdf", b"%PDF-1.4", "application/pdf")
+    message.send()
 
 
 @shared_task(base=EmailTask)
@@ -307,9 +321,8 @@ class SendLaterTest(EmailLogTestCase):
                 email_log = self.get_eft().send_later(
                     TO, attachments=[("a.pdf", b"%PDF", "application/pdf")]
                 )
-        delay.assert_called_once_with(
-            email_log.pk, encode_attachments([("a.pdf", b"%PDF", "application/pdf")])
-        )
+        # the attachment is kept as a file, so only the entry goes through the broker
+        delay.assert_called_once_with(email_log.pk, None)
         self.assertEqual(mail.outbox, [])
 
         send_email.apply(args=delay.call_args.args, task_id="task-3")
@@ -317,6 +330,25 @@ class SendLaterTest(EmailLogTestCase):
         self.assertEqual(email_log.status, EmailLog.SENT)
         self.assertEqual(email_log.source_id, "task-3")
         self.assertEqual(EmailLog.objects.count(), 1)
+        self.assertEqual(
+            mail.outbox[0].attachments, [("a.pdf", b"%PDF", "application/pdf")]
+        )
+
+    @override_settings(
+        EMAILTEMPLATES_CELERY=True, EMAILTEMPLATES_EMAIL_LOG_ATTACHMENTS=False
+    )
+    def test_without_kept_attachments_the_task_gets_them(self):
+        with mock.patch("emailtemplates.tasks.send_email.delay") as delay:
+            with self.captureOnCommitCallbacks(execute=True):
+                email_log = self.get_eft().send_later(
+                    TO, attachments=[("a.pdf", b"%PDF", "application/pdf")]
+                )
+        delay.assert_called_once_with(
+            email_log.pk, encode_attachments([("a.pdf", b"%PDF", "application/pdf")])
+        )
+        self.assertFalse(email_log.attachment_files.exists())
+
+        send_email.apply(args=delay.call_args.args)
         self.assertEqual(
             mail.outbox[0].attachments, [("a.pdf", b"%PDF", "application/pdf")]
         )
@@ -474,3 +506,161 @@ class CeleryCheckTest(TestCase):
         with mock.patch("emailtemplates.checks.find_spec", return_value=None):
             errors = check_celery(None)
         self.assertEqual([error.id for error in errors], ["emailtemplates.E002"])
+
+
+class FailedCertificateMixin:
+    PDF = ("certificate.pdf", b"%PDF-1.4", "application/pdf")
+
+    def fail_sending(self):
+        with mock.patch(SEND, side_effect=SMTPException("refused")):
+            self.get_eft().send(TO, attachments=[self.PDF])
+        return EmailLog.objects.get()
+
+
+class KeptAttachmentsTest(FailedCertificateMixin, EmailLogTestCase):
+    """
+    The attachments added by code are kept as files with the email, so that a failed email
+    can be sent again with them; the ones of the email template are not.
+    """
+
+    def test_attachments_added_by_code_are_kept(self):
+        terms = self.add_template_attachment()
+        self.get_eft().send(TO, attachments=[self.PDF])
+        email_log = EmailLog.objects.get()
+        self.assertEqual(email_log.attachments, [terms, "certificate.pdf"])
+        attachment = email_log.attachment_files.get()
+        self.assertEqual((attachment.name, attachment.mimetype), self.PDF[::2])
+        self.assertEqual(email_log.kept_attachments(), [self.PDF])
+        # a random name: the file often holds personal data
+        self.assertNotIn("certificate", attachment.file.name)
+
+    def test_send_later_keeps_them_and_sends_them(self):
+        terms = self.add_template_attachment()
+        with self.captureOnCommitCallbacks(execute=True):
+            email_log = self.get_eft().send_later(TO, attachments=[self.PDF])
+        self.assertEqual(
+            list(email_log.attachment_files.values_list("name", flat=True)),
+            ["certificate.pdf"],
+        )
+        self.assertEqual(
+            [attachment[0] for attachment in mail.outbox[0].attachments],
+            [terms, "certificate.pdf"],
+        )
+
+    def test_a_failed_email_is_sent_again_with_them(self):
+        failed = self.fail_sending()
+        with self.captureOnCommitCallbacks(execute=True):
+            again = resend(failed)
+        self.assertEqual(mail.outbox[0].attachments, [self.PDF])
+        self.assertEqual(again.attachments, ["certificate.pdf"])
+        # a copy of its own: deleting one entry leaves the other one its file
+        self.assertNotEqual(
+            again.attachment_files.get().file.name,
+            failed.attachment_files.get().file.name,
+        )
+
+    def test_an_email_whose_attachment_is_not_kept_is_not_sent_again(self):
+        failed = self.fail_sending()
+        failed.attachment_files.all().delete()
+        self.assertEqual(failed.missing_attachments(), ["certificate.pdf"])
+        with self.assertRaises(ValueError):
+            resend(failed)
+        self.assertEqual(EmailLog.objects.count(), 1)
+
+    def test_the_file_is_deleted_with_its_entry(self):
+        failed = self.fail_sending()
+        name = failed.attachment_files.get().file.name
+        self.assertTrue(default_storage.exists(name))
+        failed.delete()
+        self.assertFalse(default_storage.exists(name))
+
+    @override_settings(EMAILTEMPLATES_EMAIL_LOG_ATTACHMENT_RETENTION_DAYS=0)
+    def test_retention_of_0_deletes_them_once_sent(self):
+        failed = self.fail_sending()
+        self.assertTrue(
+            failed.attachment_files.exists()
+        )  # still needed to send it again
+        self.get_eft().send(TO, attachments=[self.PDF])
+        sent = EmailLog.objects.sent().get()
+        self.assertFalse(sent.attachment_files.exists())
+        self.assertEqual(sent.attachments, ["certificate.pdf"])  # the name stays
+
+    @override_settings(EMAILTEMPLATES_EMAIL_LOG_ATTACHMENT_RETENTION_DAYS=30)
+    def test_cleanup_deletes_the_files_of_sent_emails_past_the_retention(self):
+        failed = self.fail_sending()
+        self.get_eft().send(TO, attachments=[self.PDF])
+        sent = EmailLog.objects.sent().get()
+        EmailLog.objects.update(sent_at=now() - timedelta(days=31))
+        self.assertEqual(cleanup_email_logs(), 0)  # the emails stay
+        self.assertFalse(sent.attachment_files.exists())
+        self.assertTrue(failed.attachment_files.exists())
+
+    def test_cleanup_of_old_emails_deletes_their_files(self):
+        self.get_eft().send(TO, attachments=[self.PDF])
+        name = EmailLogAttachment.objects.get().file.name
+        EmailLog.objects.update(created=now() - timedelta(days=181))
+        out = StringIO()
+        call_command("cleanup_email_logs", stdout=out)
+        self.assertIn(
+            "Deleted 1 sent email logs and 1 attachment files", out.getvalue()
+        )
+        self.assertFalse(default_storage.exists(name))
+
+    @override_settings(EMAILTEMPLATES_EMAIL_LOG_ATTACHMENTS=False)
+    def test_none_are_kept_when_turned_off(self):
+        failed = self.fail_sending()
+        self.assertFalse(EmailLogAttachment.objects.exists())
+        self.assertEqual(failed.missing_attachments(), ["certificate.pdf"])
+
+    @override_settings(EMAILTEMPLATES_EMAIL_LOG_CONTENT=False)
+    def test_no_content_kept_means_no_files_either(self):
+        self.get_eft().send(TO, attachments=[self.PDF])
+        self.assertFalse(EmailLogAttachment.objects.exists())
+
+    def test_a_retry_of_a_task_replaces_the_files_of_its_run(self):
+        sends = [SMTPException("busy"), 1]
+        with mock.patch(SEND, side_effect=sends):
+            send_certificate.apply(task_id="task-6")
+        email_log = EmailLog.objects.get()
+        self.assertEqual((email_log.status, email_log.attempts), (EmailLog.SENT, 2))
+        self.assertEqual(email_log.attachment_files.count(), 1)
+
+
+class KeptAttachmentsAdminTest(FailedCertificateMixin, EmailLogTestCase):
+    url = "/admin/emailtemplates/emaillog/"
+
+    def setUp(self):
+        super(KeptAttachmentsAdminTest, self).setUp()
+        self.client.force_login(
+            User.objects.create_superuser("admin", "admin@example.com", "x")
+        )
+
+    def test_kept_attachments_are_marked(self):
+        failed = self.fail_sending()
+        response = self.client.get("%s%s/change/" % (self.url, failed.pk))
+        self.assertContains(response, "certificate.pdf (kept)")
+
+    def test_an_email_without_its_attachment_is_skipped(self):
+        failed = self.fail_sending()
+        failed.attachment_files.all().delete()
+        response = self.client.post("%s%s/resend/" % (self.url, failed.pk), follow=True)
+        self.assertContains(response, "its attachments certificate.pdf are not kept")
+        self.assertEqual(EmailLog.objects.count(), 1)
+
+
+class EmailBackendCheckTest(TestCase):
+    @override_settings(EMAIL_BACKEND="emailtemplates.backends.EmailBackend")
+    def test_no_warning_for_the_backend_recording_emails(self):
+        self.assertEqual(check_email_backend(None), [])
+
+    @override_settings(
+        EMAIL_BACKEND="emailtemplates.tests.test_email_log.LoggingLocMemBackend"
+    )
+    def test_no_warning_for_a_backend_with_the_mixin(self):
+        self.assertEqual(check_email_backend(None), [])
+
+    @override_settings(EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend")
+    def test_warning_for_another_backend(self):
+        # e.g. EMAIL_BACKEND set again from an EMAIL_URL
+        errors = check_email_backend(None)
+        self.assertEqual([error.id for error in errors], ["emailtemplates.W002"])

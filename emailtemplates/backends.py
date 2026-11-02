@@ -25,6 +25,7 @@ from django.core.mail import get_connection
 from django.core.mail.backends.base import BaseEmailBackend
 from django.db import models
 
+from .attachments import store_attachments
 from .managers import EmailContent, EmailSource
 from .utils import suppress_and_log
 
@@ -152,6 +153,7 @@ class EmailLogBackendMixin:
                     email_log = EmailLog.objects.record_attempt(
                         EmailContent.from_message(message), source
                     )
+                    store_attachments(email_log, message)
                 message.email_log_recorded = True
             email_logs.append(email_log)
         return email_logs
