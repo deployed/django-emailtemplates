@@ -122,9 +122,6 @@ class EmailFromTemplate(object):
         self.message = ""  # HTML body
         self.text = ""  # plain text body, generated from the HTML one
         self._template_source = "default"
-        # the attachments of the email template, not kept with the email log, see
-        # emailtemplates.history
-        self.template_attachments = []
 
     @property
     def template_source(self):
@@ -267,7 +264,6 @@ class EmailFromTemplate(object):
         # for the history of sent emails, see EmailContent.from_message()
         msg.email_template = self.name
         msg.email_language = self.language
-        msg.email_template_attachments = self.template_attachments
         if attachment_paths:
             for path in attachment_paths:
                 msg.attach_file(path)
@@ -334,7 +330,6 @@ class EmailFromTemplate(object):
              return eft.sent
         """
         attachments = self.get_default_attachments(as_links=False)
-        self.template_attachments = list(attachments)
         attachments.extend(kwargs.pop("attachments", []))
 
         self.render()
@@ -353,7 +348,6 @@ class EmailFromTemplate(object):
         cannot be passed, the email is sent by the default mail backend.
         """
         attachments = self.get_default_attachments(as_links=False)
-        self.template_attachments = list(attachments)
         attachments.extend(kwargs.pop("attachments", []))
         self.render()
         msg = self.get_message_object(
@@ -364,7 +358,7 @@ class EmailFromTemplate(object):
                 status=EmailLog.PENDING, **asdict(EmailContent.from_message(msg))
             )
             if attachments_enabled():
-                # sent with the attachments of the template and the ones kept with it
+                # sent with the attachments kept with it
                 store_attachments(email_log, msg)
                 deliver_later(email_log)
             else:

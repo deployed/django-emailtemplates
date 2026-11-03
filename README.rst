@@ -249,18 +249,23 @@ pending ones, which may still be retried - can be sent again with the *Send now*
 the *Send selected emails now* action, which need the change permission of email logs;
 the email is sent again as a new entry.
 
-The attachments added by code, e.g. an invoice made for the recipient, are kept with the
-entry (``EmailLogAttachment``), so that a failed email is sent again with them; the
-attachments of the email template are taken from the template again. Their content is
-kept in the database (``EmailLogAttachmentContent``), never served publicly, saved and
-deleted in the transaction of the email, and kept once for every distinct content: a mass
-email keeps its attachment once, not once per recipient. An attachment without a name,
-e.g. a MIME part, is named like ``attachment.gif``. An email whose attachment is not kept
-any more is never sent again without it: the admin names the missing attachments instead.
-Without ``EMAIL_BACKEND`` set to a backend recording the emails, ``emailtemplates.W002``
-warns that no history is kept. The code is in ``emailtemplates.history``.
+The attachments of an email - of its email template and the ones added by code, e.g. an
+invoice made for the recipient, alike - are kept with the entry (``EmailLogAttachment``),
+so that the email is sent, in the background or again, with exactly the attachments it
+was recorded with. Their content is kept in the database (``EmailLogAttachmentContent``),
+never served publicly, saved and deleted in the transaction of the email, and kept once
+for every distinct content: a mass email keeps its attachment once, not once per
+recipient. An attachment without a name, e.g. a MIME part, is named like
+``attachment.gif``. An email whose attachment is not kept any more is never sent without
+it: it is marked failed, and the admin names the missing attachments instead of sending
+it again. The code is in ``emailtemplates.history``.
 
-* ``EMAILTEMPLATES_EMAIL_LOG_ATTACHMENTS = False`` keeps no attachments.
+Without ``EMAIL_BACKEND`` set to a backend recording the emails, ``emailtemplates.W002``
+warns that no history is kept; not for the ``locmem`` backend, which the test runner
+sets.
+
+* ``EMAILTEMPLATES_EMAIL_LOG_ATTACHMENTS = False`` keeps no attachments; an email with
+  attachments then cannot be sent again.
 * ``EMAILTEMPLATES_EMAIL_LOG_ATTACHMENT_RETENTION_DAYS`` - after how many days
   ``cleanup_email_logs`` deletes the attachments of sent emails; ``0`` deletes them once
   the email is sent, as a sent email is not sent again; ``None`` (the default) keeps them
@@ -510,10 +515,11 @@ Changelog
   backend ``emailtemplates.backends.EmailBackend`` (or ``EmailLogBackendMixin``), Celery
   retries of a task updating the entries of its run, ``emailtemplates.tasks.EmailTask``,
   read-only admin sending failed emails again, ``cleanup_email_logs`` command and task.
-* The attachments added by code are kept with the email log, in the database and once
-  for every distinct content (``EmailLogAttachment``, ``EmailLogAttachmentContent``,
-  migration ``0016``), so that a failed email is sent again with them, with their own
-  retention; ``emailtemplates.W002`` warns when ``EMAIL_BACKEND`` keeps no history.
+* The attachments are kept with the email log, in the database and once for every
+  distinct content (``EmailLogAttachment``, ``EmailLogAttachmentContent``, migration
+  ``0016``), so that an email is sent, in the background or again, with the attachments
+  it was recorded with, with their own retention; ``emailtemplates.W002`` warns when
+  ``EMAIL_BACKEND`` keeps no history.
   ``emailtemplates.history`` holds the code of the history: keeping attachments,
   ``deliver_later()``, ``resend()``, ``cleanup_email_logs()``.
 * ``EmailFromTemplate.send_later()``: sending after the commit of the transaction, in the

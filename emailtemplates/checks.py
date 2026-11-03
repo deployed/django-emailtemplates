@@ -8,6 +8,8 @@ from django.utils.module_loading import import_string
 
 from emailtemplates.backends import EmailLogBackendMixin
 
+LOCMEM_EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
 
 @register()
 def check_rich_text_editor(app_configs, **kwargs):
@@ -62,11 +64,14 @@ def check_email_backend(app_configs, **kwargs):
     """
     The history of sent emails (Email logs) is written by the email backend; a project
     setting EMAIL_BACKEND again, e.g. in the settings of one environment, may leave it out
-    by mistake.
+    by mistake. The backend for tests, which the test runner sets before the checks, keeps
+    no history on purpose.
     """
+    if settings.EMAIL_BACKEND == LOCMEM_EMAIL_BACKEND:
+        return []
     try:
         backend = import_string(settings.EMAIL_BACKEND)
-    except ImportError:
+    except Exception:
         return []  # reported when an email is sent
     if isinstance(backend, type) and issubclass(backend, EmailLogBackendMixin):
         return []

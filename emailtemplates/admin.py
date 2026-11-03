@@ -1,4 +1,6 @@
 # coding=utf-8
+from collections import Counter
+
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponseRedirect
@@ -15,7 +17,7 @@ from .forms import (
     MassEmailAttachmentForm,
     MassEmailMessageForm,
 )
-from .history import attachment_name, missing_attachments, resend
+from .history import MissingAttachments, attachment_name, resend
 from .models import (
     EmailAttachment,
     EmailLayout,
@@ -319,13 +321,13 @@ class EmailLogAdmin(admin.ModelAdmin):
         """
         if not obj.attachments:
             return "-"
-        kept = set(obj.kept_attachments.values_list("name", flat=True))
-        names = [attachment_name(name) for name in obj.attachments]
-        return format_html_join(
-            mark_safe("<br>"),
-            "{} {}",
-            ((name, _("(kept)") if name in kept else "") for name in names),
-        )
+        kept = Counter(obj.kept_attachments.values_list("name", flat=True))
+        rows = []
+        for name in obj.attachments:
+            name = attachment_name(name)
+            rows.append((name, _("(kept)") if kept[name] else ""))
+            kept[name] -= 1
+        return format_html_join(mark_safe("<br>"), "{} {}", rows)
 
     @admin.display(description=_("HTML"))
     def show_html(self, obj):
@@ -389,20 +391,20 @@ class EmailLogAdmin(admin.ModelAdmin):
                 # not failed, or without the content, see EMAILTEMPLATES_EMAIL_LOG_CONTENT
                 skipped += 1
                 continue
-            missing = missing_attachments(email_log)
-            if missing:
-                # never sent without them, see emailtemplates.history.missing_attachments()
+            try:
+                resend(email_log)
+            except MissingAttachments as e:
+                # never sent without them
                 self.message_user(
                     request,
                     _(
                         "%(email)s was not sent again: its attachments %(attachments)s "
                         "are not kept."
                     )
-                    % {"email": email_log, "attachments": ", ".join(missing)},
+                    % {"email": email_log, "attachments": ", ".join(e.names)},
                     messages.WARNING,
                 )
                 continue
-            resend(email_log)
             sent += 1
         if sent:
             self.message_user(

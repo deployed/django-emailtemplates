@@ -19,7 +19,7 @@ from django.conf import settings
 
 from .backends import task_context
 from .history import cleanup_email_logs as cleanup_email_logs_now
-from .history import decode_attachments, deliver
+from .history import MissingAttachments, decode_attachments, deliver
 from .models import EmailLog
 
 logger = logging.getLogger(__name__)
@@ -90,14 +90,18 @@ def send_email(email_log_id, attachments=None):
     """
     Sends the email of the `EmailLog` of `email_log_id`, unless it is gone or sent already.
     `attachments` - see `emailtemplates.history.encode_attachments()`; by default the
-    attachments of its email template and the ones kept with it.
+    ones kept with it.
     """
     email_log = EmailLog.objects.filter(pk=email_log_id).first()
     if email_log is None or email_log.status == EmailLog.SENT:
         return 0
     if attachments is not None:
         attachments = decode_attachments(attachments)
-    return deliver(email_log, attachments)
+    try:
+        return deliver(email_log, attachments)
+    except MissingAttachments:
+        # marked failed by deliver(); a retry would not bring them back
+        return 0
 
 
 @shared_task
@@ -106,7 +110,11 @@ def cleanup_email_logs(retention_days=None):
     Deletes the sent emails, and the attachments of sent emails, past their retention;
     pending and failed ones are kept, see `emailtemplates.history.cleanup_email_logs()`.
     """
-    emails, files = cleanup_email_logs_now(retention_days)
-    if emails or files:
-        logger.info("Deleted %s sent email logs and %s attachment files", emails, files)
+    emails, contents = cleanup_email_logs_now(retention_days)
+    if emails or contents:
+        logger.info(
+            "Deleted %s sent email logs and the content of %s attachments",
+            emails,
+            contents,
+        )
     return emails

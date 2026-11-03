@@ -23,6 +23,7 @@ from ..history import (
     cleanup_email_logs as cleanup_email_logs_now,
     decode_attachments,
     encode_attachments,
+    MissingAttachments,
     kept_attachments,
     missing_attachments,
     resend,
@@ -526,19 +527,22 @@ class FailedInvoiceMixin:
 
 class KeptAttachmentsTest(FailedInvoiceMixin, EmailLogTestCase):
     """
-    The attachments added by code are kept with the email, in the database, so that a
-    failed email can be sent again with them; the ones of the email template are not.
+    The attachments of an email - of its email template and the ones added by code - are
+    kept with it, in the database, so that it is sent, later or again, with them.
     """
 
-    def test_attachments_added_by_code_are_kept(self):
+    def test_all_attachments_are_kept(self):
         terms = self.add_template_attachment()
         self.get_eft().send(TO, attachments=[self.PDF])
         email_log = EmailLog.objects.get()
         self.assertEqual(email_log.attachments, [terms, "invoice.pdf"])
-        attachment = email_log.kept_attachments.get()
-        self.assertEqual((attachment.name, attachment.mimetype), self.PDF[::2])
+        attachment = email_log.kept_attachments.get(name="invoice.pdf")
+        self.assertEqual(attachment.mimetype, "application/pdf")
         self.assertEqual(attachment.content.size, len(self.PDF[1]))
-        self.assertEqual(kept_attachments(email_log), [self.PDF])
+        self.assertEqual(
+            kept_attachments(email_log),
+            [(terms, b"The terms", "text/plain"), self.PDF],
+        )
 
     def test_a_file_of_the_code_named_like_one_of_the_template_is_kept(self):
         terms = self.add_template_attachment()
@@ -546,7 +550,6 @@ class KeptAttachmentsTest(FailedInvoiceMixin, EmailLogTestCase):
         with mock.patch(SEND, side_effect=SMTPException("refused")):
             self.get_eft().send(TO, attachments=[mine])
         failed = EmailLog.objects.get()
-        self.assertEqual(kept_attachments(failed), [mine])
         with self.captureOnCommitCallbacks(execute=True):
             resend(failed)
         self.assertEqual(
@@ -559,13 +562,73 @@ class KeptAttachmentsTest(FailedInvoiceMixin, EmailLogTestCase):
         with self.captureOnCommitCallbacks(execute=True):
             email_log = self.get_eft().send_later(TO, attachments=[self.PDF])
         self.assertEqual(
-            list(email_log.kept_attachments.values_list("name", flat=True)),
-            ["invoice.pdf"],
+            sorted(email_log.kept_attachments.values_list("name", flat=True)),
+            sorted([terms, "invoice.pdf"]),
         )
         self.assertEqual(
             [attachment[0] for attachment in mail.outbox[0].attachments],
             [terms, "invoice.pdf"],
         )
+
+    def test_send_later_sends_what_it_recorded(self):
+        # the template changes before the email is sent in the background
+        terms = self.add_template_attachment()
+        with self.captureOnCommitCallbacks(execute=False) as callbacks:
+            self.get_eft().send_later(TO)
+        self.email_template.attachments.all().delete()
+        for callback in callbacks:
+            callback()
+        self.assertEqual(
+            mail.outbox[0].attachments, [(terms, "The terms", "text/plain")]
+        )
+
+    def test_a_template_of_another_language_or_object_does_not_matter(self):
+        terms = self.add_template_attachment()
+        failed = self.fail_sending()
+        EmailLog.objects.update(language="", template="")
+        failed.refresh_from_db()
+        with self.captureOnCommitCallbacks(execute=True):
+            resend(failed)
+        self.assertEqual(
+            [attachment[0] for attachment in mail.outbox[0].attachments],
+            [terms, "invoice.pdf"],
+        )
+
+    def test_a_failed_mass_email_is_sent_again_with_its_attachments(self):
+        message = MassEmailMessage.objects.create(subject="News", content="<p>News</p>")
+        attachment = MassEmailAttachment(mass_email_message=message, send_as_link=False)
+        attachment.attachment_file.save("news.pdf", ContentFile(b"%PDF news"))
+        with mock.patch(SEND, side_effect=SMTPException("refused")):
+            message.send(["anna@example.com"])
+        failed = EmailLog.objects.get()
+        with self.captureOnCommitCallbacks(execute=True):
+            resend(failed)
+        self.assertEqual(
+            [attachment[0] for attachment in mail.outbox[0].attachments],
+            failed.attachments,
+        )
+
+    def test_an_email_without_its_attachments_fails_rather_than_staying_pending(self):
+        with self.captureOnCommitCallbacks(execute=False) as callbacks:
+            email_log = self.get_eft().send_later(TO, attachments=[self.PDF])
+        email_log.kept_attachments.all().delete()
+        for callback in callbacks:
+            callback()
+        email_log.refresh_from_db()
+        self.assertEqual(email_log.status, EmailLog.FAILED)
+        self.assertIn("invoice.pdf", email_log.last_error)
+        self.assertEqual(mail.outbox, [])
+
+    @override_settings(EMAILTEMPLATES_CELERY=True)
+    def test_the_task_marks_it_failed_without_retrying(self):
+        with mock.patch("emailtemplates.history.transaction.on_commit"):
+            email_log = self.get_eft().send_later(TO, attachments=[self.PDF])
+        email_log.kept_attachments.all().delete()
+        send_email.apply(args=[email_log.pk], task_id="task-7")
+        email_log.refresh_from_db()
+        self.assertEqual(email_log.status, EmailLog.FAILED)
+        self.assertEqual(EmailLog.objects.count(), 1)
+        self.assertEqual(mail.outbox, [])
 
     def test_a_mime_part_without_a_name_gets_one(self):
         image = MIMEImage(b"GIF89a", "gif")
@@ -609,6 +672,22 @@ class KeptAttachmentsTest(FailedInvoiceMixin, EmailLogTestCase):
         self.assertEqual(EmailLogAttachment.objects.count(), 3)
         self.assertEqual(EmailLogAttachmentContent.objects.count(), 1)
 
+    def test_a_content_being_used_again_is_locked_against_the_cleanup(self):
+        failed = self.fail_sending()
+        content = failed.kept_attachments.get().content
+        queries = []
+        with mock.patch(
+            "django.db.models.query.QuerySet.select_for_update",
+            autospec=True,
+            side_effect=lambda queryset, **kwargs: queries.append(kwargs) or queryset,
+        ):
+            self.get_eft().send(TO, attachments=[self.PDF])
+            cleanup_email_logs_now()
+        self.assertEqual(queries, [{}, {"skip_locked": True, "of": ("self",)}])
+        self.assertTrue(
+            EmailLogAttachmentContent.objects.filter(pk=content.pk).exists()
+        )
+
     def test_a_mass_email_keeps_its_attachment_once(self):
         message = MassEmailMessage.objects.create(subject="News", content="<p>News</p>")
         attachment = MassEmailAttachment(mass_email_message=message)
@@ -642,7 +721,7 @@ class KeptAttachmentsTest(FailedInvoiceMixin, EmailLogTestCase):
         failed = self.fail_sending()
         failed.kept_attachments.all().delete()
         self.assertEqual(missing_attachments(failed), ["invoice.pdf"])
-        with self.assertRaises(ValueError):
+        with self.assertRaises(MissingAttachments):
             resend(failed)
         self.assertEqual(EmailLog.objects.count(), 1)
 
@@ -681,7 +760,8 @@ class KeptAttachmentsTest(FailedInvoiceMixin, EmailLogTestCase):
         out = StringIO()
         call_command("cleanup_email_logs", stdout=out)
         self.assertIn(
-            "Deleted 1 sent email logs and 1 attachment files", out.getvalue()
+            "Deleted 1 sent email logs and the content of 1 attachments",
+            out.getvalue(),
         )
         self.assertFalse(EmailLogAttachmentContent.objects.exists())
 
@@ -728,6 +808,26 @@ class KeptAttachmentsAdminTest(FailedInvoiceMixin, EmailLogTestCase):
         response = self.client.post("%s%s/resend/" % (self.url, failed.pk), follow=True)
         self.assertContains(response, "its attachments attachment are not kept")
 
+    def test_a_name_kept_once_is_marked_once(self):
+        terms = self.add_template_attachment()
+        with mock.patch(SEND, side_effect=SMTPException("refused")):
+            self.get_eft().send(TO, attachments=[(terms, b"Mine", "text/plain")])
+        failed = EmailLog.objects.get()
+        failed.kept_attachments.filter(content__data=b"Mine").delete()
+        response = self.client.get("%s%s/change/" % (self.url, failed.pk))
+        self.assertContains(response, "%s (kept)" % terms, count=1)
+
+    def test_attachments_deleted_meanwhile_are_reported_not_an_error(self):
+        failed = self.fail_sending()
+        with mock.patch(
+            "emailtemplates.admin.resend",
+            side_effect=MissingAttachments(["invoice.pdf"]),
+        ):
+            response = self.client.post(
+                "%s%s/resend/" % (self.url, failed.pk), follow=True
+            )
+        self.assertContains(response, "its attachments invoice.pdf are not kept")
+
     def test_an_email_without_its_attachment_is_skipped(self):
         failed = self.fail_sending()
         failed.kept_attachments.all().delete()
@@ -746,6 +846,17 @@ class EmailBackendCheckTest(TestCase):
     )
     def test_no_warning_for_a_backend_with_the_mixin(self):
         self.assertEqual(check_email_backend(None), [])
+
+    @override_settings(EMAIL_BACKEND=LOCMEM)
+    def test_no_warning_for_the_backend_of_the_test_runner(self):
+        self.assertEqual(check_email_backend(None), [])
+
+    @override_settings(EMAIL_BACKEND="emailtemplates.tests.missing.Backend")
+    def test_a_backend_that_cannot_be_imported_does_not_stop_the_checks(self):
+        with mock.patch(
+            "emailtemplates.checks.import_string", side_effect=RuntimeError("broken")
+        ):
+            self.assertEqual(check_email_backend(None), [])
 
     @override_settings(EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend")
     def test_warning_for_another_backend(self):

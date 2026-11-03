@@ -384,8 +384,8 @@ class EmailLog(models.Model):
     email is sent with it later, see `emailtemplates.history.deliver()`.
 
     The content (``html``, ``text``) is kept after sending unless
-    ``EMAILTEMPLATES_EMAIL_LOG_CONTENT = False``; the attachments added by code are kept
-    with it (`EmailLogAttachment`), see `emailtemplates.history`.
+    ``EMAILTEMPLATES_EMAIL_LOG_CONTENT = False``; the attachments are kept with it
+    (`EmailLogAttachment`), see `emailtemplates.history`.
     """
 
     PENDING = "pending"
@@ -524,8 +524,8 @@ class EmailLogAttachmentContent(models.Model):
 
 class EmailLogAttachment(models.Model):
     """
-    An attachment added by code to an email of the history (`EmailLog`), kept so that the
-    email can be sent again with it, see `emailtemplates.history`.
+    An attachment of an email of the history (`EmailLog`), kept so that the email is sent,
+    later or again, with it, see `emailtemplates.history`.
     """
 
     id = models.BigAutoField(
