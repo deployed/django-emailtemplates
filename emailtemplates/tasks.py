@@ -7,7 +7,9 @@ emails and keeping their history, see `emailtemplates.backends`.
 * `send_email` - sends an email of `EmailFromTemplate.send_later()` with
   ``EMAILTEMPLATES_CELERY = True``, retrying a failed sending with a growing delay,
   ``EMAILTEMPLATES_CELERY_MAX_RETRIES`` times (3 by default), on the queue
-  ``EMAILTEMPLATES_CELERY_QUEUE`` (the default one by default).
+  ``EMAILTEMPLATES_CELERY_QUEUE`` (the default one by default). The delay starts at
+  ``EMAILTEMPLATES_CELERY_RETRY_BACKOFF`` seconds (60 by default) and is randomized with
+  ``EMAILTEMPLATES_CELERY_RETRY_JITTER = True`` (``False`` by default).
 * `cleanup_email_logs` - deletes old sent emails, e.g. run daily by Celery beat.
 """
 
@@ -81,8 +83,8 @@ if getattr(settings, "EMAILTEMPLATES_CELERY_QUEUE", None):
 @shared_task(
     base=EmailTask,
     autoretry_for=(SMTPException, OSError),
-    retry_backoff=True,
-    retry_jitter=True,
+    retry_backoff=getattr(settings, "EMAILTEMPLATES_CELERY_RETRY_BACKOFF", 60),
+    retry_jitter=getattr(settings, "EMAILTEMPLATES_CELERY_RETRY_JITTER", False),
     max_retries=getattr(settings, "EMAILTEMPLATES_CELERY_MAX_RETRIES", 3),
     **_send_email_options
 )

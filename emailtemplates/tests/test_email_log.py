@@ -371,6 +371,19 @@ class SendLaterTest(EmailLogTestCase):
         self.assertEqual(email_log.attempts, send_email.max_retries + 1)
         self.assertEqual(EmailLog.objects.count(), 1)
 
+    def test_the_delay_of_a_retry_grows_from_a_minute_by_default(self):
+        with mock.patch("emailtemplates.history.transaction.on_commit"):
+            email_log = self.get_eft().send_later(TO)
+        with mock.patch(SEND, side_effect=SMTPException("busy")), mock.patch(
+            "celery.app.autoretry.get_exponential_backoff_interval", return_value=0
+        ) as backoff:
+            send_email.apply(args=[email_log.pk])
+        self.assertEqual(backoff.call_count, send_email.max_retries + 1)
+        for retries, call in enumerate(backoff.call_args_list):
+            self.assertEqual(call.kwargs["factor"], 60)
+            self.assertEqual(call.kwargs["retries"], retries)
+            self.assertIs(call.kwargs["full_jitter"], False)
+
     def test_sent_emails_are_not_sent_again_by_the_task(self):
         self.get_eft().send(TO)
         self.assertEqual(send_email.run(EmailLog.objects.get().pk), 0)
