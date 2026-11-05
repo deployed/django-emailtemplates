@@ -188,7 +188,11 @@ Settings
 
 * ``EMAILTEMPLATES_CELERY`` - ``True`` sends the emails of ``send_later()`` with Celery,
   see `Sending in the background`_; ``EMAILTEMPLATES_CELERY_MAX_RETRIES`` - how many
-  times a failed sending is retried (3); ``EMAILTEMPLATES_CELERY_QUEUE`` - the queue.
+  times a failed sending is retried (3); ``EMAILTEMPLATES_CELERY_QUEUE`` - the queue;
+  ``EMAILTEMPLATES_CELERY_RETRY_BACKOFF`` - the delay of the first retry in seconds,
+  doubled by each next one (Celery's ``retry_backoff``, 60);
+  ``EMAILTEMPLATES_CELERY_RETRY_JITTER`` - ``True`` randomizes the delay of a retry
+  (Celery's ``retry_jitter``, ``False``).
 * ``EMAILTEMPLATES_EMAIL_BACKEND``, ``EMAILTEMPLATES_EMAIL_LOG_CONTENT``,
   ``EMAILTEMPLATES_EMAIL_LOG_RETENTION_DAYS``, ``EMAILTEMPLATES_EMAIL_LOG_ATTACHMENTS``,
   ``EMAILTEMPLATES_EMAIL_LOG_ATTACHMENT_RETENTION_DAYS`` - see `Email logs`_.
