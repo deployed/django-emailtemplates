@@ -18,7 +18,8 @@ from celery import Task, shared_task
 from django.conf import settings
 
 from .backends import task_context
-from .email import decode_attachments
+from .history import cleanup_email_logs as cleanup_email_logs_now
+from .history import MissingAttachments, decode_attachments, deliver
 from .models import EmailLog
 
 logger = logging.getLogger(__name__)
@@ -85,24 +86,35 @@ if getattr(settings, "EMAILTEMPLATES_CELERY_QUEUE", None):
     max_retries=getattr(settings, "EMAILTEMPLATES_CELERY_MAX_RETRIES", 3),
     **_send_email_options
 )
-def send_email(email_log_id, attachments=()):
+def send_email(email_log_id, attachments=None):
     """
     Sends the email of the `EmailLog` of `email_log_id`, unless it is gone or sent already.
-    `attachments` - see `emailtemplates.email.encode_attachments()`.
+    `attachments` - see `emailtemplates.history.encode_attachments()`; by default the
+    ones kept with it.
     """
     email_log = EmailLog.objects.filter(pk=email_log_id).first()
     if email_log is None or email_log.status == EmailLog.SENT:
         return 0
-    return email_log.deliver(decode_attachments(attachments))
+    if attachments is not None:
+        attachments = decode_attachments(attachments)
+    try:
+        return deliver(email_log, attachments)
+    except MissingAttachments:
+        # marked failed by deliver(); a retry would not bring them back
+        return 0
 
 
 @shared_task
 def cleanup_email_logs(retention_days=None):
     """
-    Deletes the sent emails older than ``EMAILTEMPLATES_EMAIL_LOG_RETENTION_DAYS`` (180 by
-    default); pending and failed ones are kept, see `EmailLogQuerySet.past_retention()`.
+    Deletes the sent emails, and the attachments of sent emails, past their retention;
+    pending and failed ones are kept, see `emailtemplates.history.cleanup_email_logs()`.
     """
-    deleted, _ = EmailLog.objects.past_retention(retention_days).delete()
-    if deleted:
-        logger.info("Deleted %s sent email logs", deleted)
-    return deleted
+    emails, contents = cleanup_email_logs_now(retention_days)
+    if emails or contents:
+        logger.info(
+            "Deleted %s sent email logs and the content of %s attachments",
+            emails,
+            contents,
+        )
+    return emails

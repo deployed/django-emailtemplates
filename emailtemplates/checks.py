@@ -4,6 +4,11 @@ from importlib.util import find_spec
 from django.apps import apps
 from django.conf import settings
 from django.core.checks import Error, Warning, register
+from django.utils.module_loading import import_string
+
+from emailtemplates.backends import EmailLogBackendMixin
+
+LOCMEM_EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 
 @register()
@@ -52,3 +57,31 @@ def check_celery(app_configs, **kwargs):
             )
         ]
     return []
+
+
+@register()
+def check_email_backend(app_configs, **kwargs):
+    """
+    The history of sent emails (Email logs) is written by the email backend; a project
+    setting EMAIL_BACKEND again, e.g. in the settings of one environment, may leave it out
+    by mistake. The backend for tests, which the test runner sets before the checks, keeps
+    no history on purpose.
+    """
+    if settings.EMAIL_BACKEND == LOCMEM_EMAIL_BACKEND:
+        return []
+    try:
+        backend = import_string(settings.EMAIL_BACKEND)
+    except Exception:
+        return []  # reported when an email is sent
+    if isinstance(backend, type) and issubclass(backend, EmailLogBackendMixin):
+        return []
+    return [
+        Warning(
+            "EMAIL_BACKEND does not record the sent emails in Email logs.",
+            hint="Set EMAIL_BACKEND = 'emailtemplates.backends.EmailBackend' and the "
+            "backend delivering the emails as EMAILTEMPLATES_EMAIL_BACKEND, or mix "
+            "emailtemplates.backends.EmailLogBackendMixin in the backend. Silence "
+            "emailtemplates.W002 to keep no history.",
+            id="emailtemplates.W002",
+        )
+    ]

@@ -4,7 +4,6 @@ import os
 import re
 
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
 from django.db import models
 from django.template import TemplateDoesNotExist
 from django.utils import translation
@@ -382,10 +381,11 @@ class EmailLog(models.Model):
     so that a retry updates the entries of the run instead of adding new ones.
 
     `EmailFromTemplate.send_later()` writes the entry when the email is rendered and the
-    email is sent with it later, see `deliver()`.
+    email is sent with it later, see `emailtemplates.history.deliver()`.
 
     The content (``html``, ``text``) is kept after sending unless
-    ``EMAILTEMPLATES_EMAIL_LOG_CONTENT = False``; attachments are kept by name only.
+    ``EMAILTEMPLATES_EMAIL_LOG_CONTENT = False``; the attachments are kept with it
+    (`EmailLogAttachment`), see `emailtemplates.history`.
     """
 
     PENDING = "pending"
@@ -486,7 +486,8 @@ class EmailLog(models.Model):
         self.sent_at = now()
         self.last_error = ""
         update_fields = ["status", "sent_at", "last_error", "modified"]
-        if not getattr(settings, "EMAILTEMPLATES_EMAIL_LOG_CONTENT", True):
+        keep_content = getattr(settings, "EMAILTEMPLATES_EMAIL_LOG_CONTENT", True)
+        if not keep_content:
             self.html = self.text = ""
             update_fields += ["html", "text"]
         self.save(update_fields=update_fields)
@@ -496,52 +497,59 @@ class EmailLog(models.Model):
         self.last_error = str(error)
         self.save(update_fields=["status", "last_error", "modified"])
 
-    def get_message(self, attachments=()):
-        """
-        The email of this entry: an `EmailMultiAlternatives` with the plain text as its body
-        and the HTML as its alternative, which the email backend records in this entry.
-        `attachments` - (filename, content[, mimetype]) tuples.
-        """
-        message = EmailMultiAlternatives(
-            subject=self.subject,
-            body=self.text,
-            from_email=self.from_email or None,
-            to=self.recipients,
-            cc=self.cc,
-            bcc=self.bcc,
-            reply_to=self.reply_to,
-            headers=self.headers,
-            attachments=list(attachments),
-        )
-        if self.html:
-            message.attach_alternative(self.html, "text/html")
-        message.email_log = self
-        message.email_template = self.template
-        message.email_language = self.language
-        return message
 
-    def deliver(self, attachments=(), fail_silently=False):
-        """
-        Sends the email of this entry now. The email backend of emailtemplates records the
-        attempt and its result here; with another backend this entry records them itself.
-        Returns the number of emails sent.
-        """
-        message = self.get_message(attachments)
-        try:
-            sent = message.send(fail_silently=fail_silently)
-        except Exception as e:
-            if not getattr(message, "email_log_recorded", False):
-                self.count_attempt()
-                self.mark_failed("%s: %s" % (type(e).__name__, e))
-            raise
-        if not getattr(message, "email_log_recorded", False):
-            self.count_attempt()
-            if sent:
-                self.mark_sent()
-            else:
-                self.mark_failed("The email was not sent.")
-        return sent
+class EmailLogAttachmentContent(models.Model):
+    """
+    The content of attachments kept with the history of sent emails (`EmailLogAttachment`),
+    once for every distinct content: an attachment of a mass email is kept once, not once
+    per recipient. In the database, so that it is saved and deleted in the transaction of
+    the email, and never served publicly, see `emailtemplates.history`.
+    """
 
-    def count_attempt(self):
-        EmailLog.objects.filter(pk=self.pk).update(attempts=models.F("attempts") + 1)
-        self.refresh_from_db(fields=["attempts"])
+    id = models.BigAutoField(
+        auto_created=True, primary_key=True, serialize=False, verbose_name=_("ID")
+    )
+    sha256 = models.CharField(_("SHA-256"), max_length=64, unique=True)
+    data = models.BinaryField(_("data"))
+    size = models.PositiveBigIntegerField(_("size"))
+    created = models.DateTimeField(_("created"), default=now)
+
+    class Meta:
+        verbose_name = _("Email log attachment content")
+        verbose_name_plural = _("Email log attachment contents")
+
+    def __str__(self):
+        return self.sha256
+
+
+class EmailLogAttachment(models.Model):
+    """
+    An attachment of an email of the history (`EmailLog`), kept so that the email is sent,
+    later or again, with it, see `emailtemplates.history`.
+    """
+
+    id = models.BigAutoField(
+        auto_created=True, primary_key=True, serialize=False, verbose_name=_("ID")
+    )
+    email_log = models.ForeignKey(
+        EmailLog,
+        verbose_name=_("email log"),
+        related_name="kept_attachments",
+        on_delete=models.CASCADE,
+    )
+    name = models.CharField(_("name"), max_length=255)
+    mimetype = models.CharField(_("MIME type"), max_length=255, blank=True)
+    content = models.ForeignKey(
+        EmailLogAttachmentContent,
+        verbose_name=_("content"),
+        related_name="attachments",
+        on_delete=models.PROTECT,
+    )
+    created = models.DateTimeField(_("created"), default=now)
+
+    class Meta:
+        verbose_name = _("Email log attachment")
+        verbose_name_plural = _("Email log attachments")
+
+    def __str__(self):
+        return self.name
