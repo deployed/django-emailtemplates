@@ -527,7 +527,9 @@ Changelog
   ``emailtemplates.history`` holds the code of the history: keeping attachments,
   ``deliver_later()``, ``resend()``, ``cleanup_email_logs()``.
 * ``EmailFromTemplate.send_later()``: sending after the commit of the transaction, in the
-  background with Celery (the ``celery`` extra, ``EMAILTEMPLATES_CELERY``), with retries.
+  background with Celery (the ``celery`` extra, ``EMAILTEMPLATES_CELERY``), with retries
+  (``EMAILTEMPLATES_CELERY_MAX_RETRIES``, ``EMAILTEMPLATES_CELERY_RETRY_BACKOFF``,
+  ``EMAILTEMPLATES_CELERY_RETRY_JITTER``).
   ``emailtemplates.E002`` reports ``EMAILTEMPLATES_CELERY`` without Celery.
 * ``EMAILTEMPLATES_INLINE_CSS`` setting and the ``inline`` extra: CSS inlined into the
   sent emails, so that the styles of a layout apply to the content written in the rich
