@@ -113,7 +113,9 @@ Usage
    migration, see `Creating email templates`_. Its content starts as a copy of the file.
    Files added as *Email attachments* and linked to the template are attached to every
    email, or, with *send as link*, passed to the context as ``default_attachments`` (name,
-   URL pairs).
+   URL pairs). Only documents, images and archives can be uploaded (see
+   ``emailtemplates.constants.ATTACHMENT_EXTENSIONS``): the files are public in ``MEDIA``, where HTML or SVG could
+   run scripts in the session of a recipient.
 
 Default versions
 ----------------

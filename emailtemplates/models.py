@@ -4,11 +4,13 @@ import os
 import re
 
 from django.conf import settings
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.template import TemplateDoesNotExist
 from django.utils import translation
 from django.utils.translation import gettext_lazy as _
 
+from emailtemplates.constants import ATTACHMENT_EXTENSIONS
 from emailtemplates.helpers import TemplateSourceLoader, mass_mailing_recipients
 from emailtemplates.managers import EmailLogManager, EmailLogQuerySet
 from emailtemplates.registry import NotRegistered, email_templates
@@ -288,7 +290,10 @@ class BaseEmailAttachment(models.Model):
     )
     name = models.CharField(_("name"), blank=True, max_length=50)
     attachment_file = models.FileField(
-        _("Attachment file"), upload_to="emails/attachments/", max_length=255
+        _("Attachment file"),
+        upload_to="emails/attachments/",
+        max_length=255,
+        validators=[FileExtensionValidator(ATTACHMENT_EXTENSIONS)],
     )
     comment = models.TextField(
         verbose_name=_("Comment"), blank=True, help_text=_("visible only in admin")

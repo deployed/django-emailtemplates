@@ -1,9 +1,11 @@
 from django.contrib.auth.models import Permission, User
 from django.core import mail
+from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
-from ..models import EmailLayout, EmailTemplate, MassEmailMessage
+from ..models import EmailAttachment, EmailLayout, EmailTemplate, MassEmailMessage
 from ..registry import email_templates
 
 SCRIPT = "<script>alert(1)</script>"
@@ -61,3 +63,14 @@ class SecurityTest(TestCase):
             Permission.objects.get(codename="change_emailtemplate")
         )
         self.assertEqual(self.client.post(url, {"content": "x"}).status_code, 200)
+
+    def test_attachments_cannot_be_files_running_scripts(self):
+        for name in ("terms.html", "logo.svg", "data.xml"):
+            attachment = EmailAttachment(
+                attachment_file=SimpleUploadedFile(name, SCRIPT.encode())
+            )
+            with self.assertRaises(ValidationError, msg=name):
+                attachment.full_clean()
+        EmailAttachment(
+            attachment_file=SimpleUploadedFile("terms.pdf", b"%PDF")
+        ).full_clean()
