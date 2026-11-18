@@ -8,7 +8,7 @@ import django
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import PermissionDenied
-from django.http import Http404, HttpResponse, HttpResponseRedirect, JsonResponse
+from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template import Context, Template
 from django.template.response import TemplateResponse
@@ -18,51 +18,40 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _
 from django.views import View
 
-from emailtemplates.email import EmailFromTemplate
+from emailtemplates.mixins import AnyPermissionRequiredMixin
 from emailtemplates.models import EmailLayout, EmailTemplate, MassEmailMessage
 from emailtemplates.registry import email_templates
 from emailtemplates.rich_text import unescape_template_tags
+from emailtemplates.utils import render_preview, sandboxed_response
 
 
-def render_preview(email_template, content=None):
-    """
-    HTML of the preview of an email template: `content` (by default the content of the
-    template) rendered by `EmailFromTemplate` as the email is sent - in the layout, with the
-    subject, the preheader and the blocks - filled with the example context of the registry.
-    """
-    if content is not None:
-        email_template = copy.copy(email_template)
-        email_template.content = content
-    eft = EmailFromTemplate(
-        name=email_template.title,
-        language=email_template.language,
-        template_object=email_template,
-        registry_validation=False,
+class EmailPreviewView(AnyPermissionRequiredMixin, View):
+    permissions = (
+        "emailtemplates.view_emailtemplate",
+        "emailtemplates.change_emailtemplate",
     )
-    eft.context.update(email_templates.get_preview_context(email_template.title))
-    return eft.render().html
 
-
-class EmailPreviewView(View):
     def get_email_template(self):
         return get_object_or_404(
             EmailTemplate.objects.select_related("layout"), pk=self.kwargs["pk"]
         )
 
     def get(self, request, *args, **kwargs):
-        return HttpResponse(
-            render_preview(self.get_email_template()),
-            content_type="text/html; charset=utf-8",
-        )
+        return sandboxed_response(render_preview(self.get_email_template()))
 
 
 email_preview_view = staff_member_required(EmailPreviewView.as_view())
 
 
-class EmailLayoutPreviewView(View):
+class EmailLayoutPreviewView(AnyPermissionRequiredMixin, View):
     """
     Shows a layout with a placeholder in place of the email template content.
     """
+
+    permissions = (
+        "emailtemplates.view_emaillayout",
+        "emailtemplates.change_emaillayout",
+    )
 
     placeholder = (
         '<div style="padding:30px;margin:10px 0;border:2px dashed #b0b0b0;'
@@ -83,13 +72,15 @@ class EmailLayoutPreviewView(View):
             # header and footer may use context variables this preview does not provide,
             # show the problem instead of a 500
             html = '<p style="color:red">%s</p>' % escape(e)
-        return HttpResponse(html, content_type="text/html; charset=utf-8")
+        return sandboxed_response(html)
 
 
 email_layout_preview_view = staff_member_required(EmailLayoutPreviewView.as_view())
 
 
-class SendMassEmailView(View):
+class SendMassEmailView(AnyPermissionRequiredMixin, View):
+    permissions = ("emailtemplates.change_massemailmessage",)
+
     def get_mass_email_message(self):
         return get_object_or_404(MassEmailMessage, pk=self.kwargs["pk"])
 
@@ -101,7 +92,7 @@ class SendMassEmailView(View):
             ),
         )
 
-    def get(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         mass_email_message = self.get_mass_email_message()
         if mass_email_message.sent:
             messages.success(
@@ -122,7 +113,7 @@ class SendMassEmailView(View):
         return self.redirect_back()
 
 
-send_mass_email_view = SendMassEmailView.as_view()
+send_mass_email_view = staff_member_required(SendMassEmailView.as_view())
 
 
 class EmailTemplateAdminView(View):
@@ -224,7 +215,7 @@ class EmailTemplatePreviewView(EmailTemplateAdminView):
     cannot be rendered, e.g. while a template tag is being typed.
     """
 
-    permission = "view"
+    permission = "change"
 
     def post(self, request, object_id):
         try:

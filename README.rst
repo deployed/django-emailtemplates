@@ -348,9 +348,16 @@ Previews
 * *Show email preview* on an email template renders it with ``EmailFromTemplate``, as it
   is sent - with its layout, subject, preheader and blocks - filled with the example
   context from the registry. Example values of
-  ``help_context`` are fixed; for real objects pass ``preview_context`` to ``register()``,
+  ``help_context`` are fixed; for objects pass ``preview_context`` to ``register()``,
   a dict or a callable returning one, called on every preview, e.g.
-  ``preview_context=lambda: {"order": Order.objects.first()}``.
+  ``preview_context=lambda: {"order": Order(number="12345", total=99)}``.
+
+  Prefer unsaved example objects to real records (``Order.objects.first()``): templates
+  call methods of the objects in their context, so a template written in the admin, or
+  typed into the live preview, can call a method changing data, e.g.
+  ``{{ order.cancel }}``. Django does not call methods marked ``alters_data = True`` -
+  ``save()``, ``delete()`` and those of querysets are - so mark your own methods changing
+  data that way too.
 * *Show layout preview* on a layout renders the header, the footer and the styles with a
   placeholder in place of the email content. It has no context, so variables used in the
   header or the footer render empty.
@@ -542,8 +549,8 @@ Changelog
 * The rich text editor shows the content with the styles of the layout and gets a
   *Formats* button when ``style_formats`` are configured.
 * Layouts may be whole HTML documents: the styles go before ``</head>`` of the header.
-* ``preview_context`` of ``register()``: context of the admin preview, e.g. with model
-  instances.
+* ``preview_context`` of ``register()``: context of the admin preview, e.g. with unsaved
+  model instances.
 * Live preview of the email next to the content editor, updated while editing, before
   saving.
 * Default versions: email templates keep a snapshot of their template file; the admin

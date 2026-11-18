@@ -3,11 +3,13 @@ import mock
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils.html import escape
 
 from ..email import EmailFromTemplate
 from ..forms import EmailTemplateAdminForm
 from ..models import EmailTemplate
 from ..registry import Block, EmailTemplateRegistry, RegistrationItem, email_templates
+from ..utils import render_preview
 
 TITLE = "blocks_test.html"
 LANGUAGE = "pl"
@@ -135,7 +137,7 @@ class BlocksPreviewTest(TestCase):
         response = self.client.get(
             reverse("email_preview", kwargs={"pk": email_template.pk})
         )
-        self.assertContains(response, "<td>Order 123</td>")
+        self.assertContains(response, escape("<td>Order 123</td>"))
 
 
 @override_settings(
@@ -185,12 +187,7 @@ class BlocksAdminTest(TestCase):
         self.assertEqual(self.client.get(self.url).status_code, 403)
 
 
-@override_settings(ROOT_URLCONF="emailtemplates.tests.urls")
 class PreviewContextTest(TestCase):
-    def setUp(self):
-        user = User.objects.create_superuser("admin", "admin@example.com", "x")
-        self.client.force_login(user)
-
     def preview(self, path, **register_kwargs):
         if not email_templates.is_registered(path):
             email_templates.register(
@@ -204,9 +201,7 @@ class PreviewContextTest(TestCase):
             subject="S",
             content="{{ number }} {{ name }}",
         )
-        return self.client.get(
-            reverse("email_preview", kwargs={"pk": email_template.pk})
-        ).content.decode()
+        return render_preview(email_template)
 
     def test_preview_context_updates_the_help_context_examples(self):
         self.assertEqual(

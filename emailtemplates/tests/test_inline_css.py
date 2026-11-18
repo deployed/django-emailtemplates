@@ -3,6 +3,7 @@ import mock
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils.html import escape
 
 from ..checks import check_css_inliner
 from ..email import EmailFromTemplate
@@ -59,7 +60,7 @@ class InlineCssTest(TestCase):
             response = self.client.get(
                 reverse("email_preview", kwargs={"pk": self.email_template.pk})
             )
-        self.assertContains(response, '<h2 style="color: #6b6bc5;">Hello</h2>')
+        self.assertContains(response, escape('<h2 style="color: #6b6bc5;">Hello</h2>'))
 
     @override_settings(EMAILTEMPLATES_INLINE_CSS=True)
     def test_check_requires_css_inline(self):

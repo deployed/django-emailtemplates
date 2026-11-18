@@ -209,8 +209,9 @@ class EmailTemplateRegistry(object):
             in the inbox, see `EmailTemplate.preheader` [optional]
         :param blocks: Dictionary of blocks the template may use, see `Block` [optional]
         :param preview_context: Context of the email preview in the admin, a dict or a
-            callable returning one, e.g. lambda: {'order': Order.objects.first()}. Updates
-            the example values of `help_context` [optional]
+            callable returning one, e.g. lambda: {'order': Order(number='12345')}. Updates
+            the example values of `help_context`. Prefer unsaved objects: templates may
+            call their methods, see the README [optional]
 
         `help_context` items values may be strings or tuples of two strings. If strings, then email template preview
         will use variable names to fill context, otherwise the second tuple element will become example value.
