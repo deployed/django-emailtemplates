@@ -5,7 +5,7 @@ import re
 
 from django.conf import settings
 from django.core.validators import FileExtensionValidator
-from django.db import models
+from django.db import models, transaction
 from django.template import TemplateDoesNotExist
 from django.utils import translation
 from django.utils.translation import gettext_lazy as _
@@ -340,33 +340,31 @@ class MassEmailMessage(models.Model):
         return bool(self.date_sent)
 
     def send(self, recipients=None, force=False):
+        """
+        Queues the emails with `send_later()` (Celery when enabled), locking the message so
+        that concurrent requests send it once; False when it was already sent.
+        """
         from emailtemplates.email import EmailFromTemplate
 
         recipients = recipients or mass_mailing_recipients()
-        if self.sent and not force:
-            return False
-        eft = EmailFromTemplate(
-            name="emailtemplates/mass_email.html",
-            subject=self.subject,
-            template_object=self,
-            registry_validation=False,
-        )
-        attachment_paths = [
-            attachment.attachment_file.path for attachment in self.attachments.all()
-        ]
-        sent_count = 0
-        for recipient in recipients:
-            sent = eft.send(to=[recipient], attachment_paths=attachment_paths)
-            if sent:
-                sent_count += 1
-                logger.info(
-                    "Successfully sent mass email message to user %s", recipient
-                )
-            else:
-                logger.warning("Error sending mass email message to user %s", recipient)
-        self.date_sent = now()
-        self.save()
-        return sent_count == len(recipients)
+        with transaction.atomic():
+            locked = MassEmailMessage.objects.select_for_update().get(pk=self.pk)
+            if locked.sent and not force:
+                return False
+            eft = EmailFromTemplate(
+                name="emailtemplates/mass_email.html",
+                subject=self.subject,
+                template_object=self,
+                registry_validation=False,
+            )
+            attachment_paths = [
+                attachment.attachment_file.path for attachment in self.attachments.all()
+            ]
+            for recipient in recipients:
+                eft.send_later(to=[recipient], attachment_paths=attachment_paths)
+            self.date_sent = now()
+            self.save()
+        return True
 
 
 class MassEmailAttachment(BaseEmailAttachment):

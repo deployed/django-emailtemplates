@@ -613,12 +613,8 @@ msgstr ""
 "konsoli shell."
 
 #: views.py:117
-msgid "Mass email sent successfully"
-msgstr "Wiadomość grupowa wysłana pomyślnie"
-
-#: views.py:120
-msgid "Error occurred when trying to send mass email message."
-msgstr "Wystąpił błąd podczas próby wysłania wiadomości grupowej."
+msgid "Mass email was queued for sending."
+msgstr "Wiadomość grupowa została zakolejkowana do wysłania."
 
 #: views.py:174
 msgid "The content was replaced with the default version."

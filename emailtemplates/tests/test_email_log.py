@@ -612,7 +612,8 @@ class KeptAttachmentsTest(FailedInvoiceMixin, EmailLogTestCase):
         attachment = MassEmailAttachment(mass_email_message=message, send_as_link=False)
         attachment.attachment_file.save("news.pdf", ContentFile(b"%PDF news"))
         with mock.patch(SEND, side_effect=SMTPException("refused")):
-            message.send(["anna@example.com"])
+            with self.captureOnCommitCallbacks(execute=True):
+                message.send(["anna@example.com"])
         failed = EmailLog.objects.get()
         with self.captureOnCommitCallbacks(execute=True):
             resend(failed)

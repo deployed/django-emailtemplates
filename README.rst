@@ -575,6 +575,12 @@ Changelog
   (``msg.body``) is the plain text and the HTML is an alternative; previously the body was
   the HTML with ``content_subtype = "html"``. ``EmailFromTemplate.content_subtype`` is
   removed.
+* **Backward incompatible**: "Send to all users" sends the mass email with a POST (a GET
+  returns 405); an overridden ``admin/emailtemplates/massemailmessage/change_form.html``
+  linking to ``send_mass_email`` needs a form with ``{% csrf_token %}``.
+* ``MassEmailMessage.send()`` queues the emails with ``send_later()`` (by Celery with
+  ``EMAILTEMPLATES_CELERY``), locking the message so that it is sent once; it returns
+  True once the emails are queued, failures are in the email history.
 
 2.0.0
 -----

@@ -93,22 +93,15 @@ class SendMassEmailView(AnyPermissionRequiredMixin, View):
         )
 
     def post(self, request, *args, **kwargs):
-        mass_email_message = self.get_mass_email_message()
-        if mass_email_message.sent:
-            messages.success(
+        if self.get_mass_email_message().send():
+            messages.success(request, _("Mass email was queued for sending."))
+        else:
+            messages.warning(
                 request,
                 _(
                     "Mass email was already sent. "
                     "Create new mail message or force sending from shell."
                 ),
-            )
-            return self.redirect_back()
-        sent = mass_email_message.send()
-        if sent:
-            messages.success(request, _("Mass email sent successfully"))
-        else:
-            messages.warning(
-                request, _("Error occurred when trying to send mass email message.")
             )
         return self.redirect_back()
 
