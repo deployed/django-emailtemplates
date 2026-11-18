@@ -282,6 +282,8 @@ class EmailLogAdmin(admin.ModelAdmin):
     readonly_fields = [
         field for _name, options in fieldsets for field in options["fields"]
     ]
+    # may hold secrets, e.g. password reset links
+    superuser_fields = ["show_html", "text", "source_context"]
 
     class Media:
         css = {"all": ("emailtemplates/email_log.css",)}
@@ -291,6 +293,19 @@ class EmailLogAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if request.user.is_superuser:
+            return fieldsets
+        visible = []
+        for name, options in fieldsets:
+            fields = [f for f in options["fields"] if f not in self.superuser_fields]
+            options = dict(options, fields=fields)
+            if not fields:
+                options["description"] = _("Only superusers can see the content.")
+            visible.append((name, options))
+        return visible
 
     def has_resend_permission(self, request):
         opts = self.opts

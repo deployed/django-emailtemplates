@@ -221,3 +221,6 @@ msgstr "Hier steht der Inhalt der E-Mail-Vorlage"
 
 #~ msgid "email template"
 #~ msgstr "E-Mail-Vorlage"
+
+msgid "Only superusers can see the content."
+msgstr "Nur Superuser können den Inhalt sehen."

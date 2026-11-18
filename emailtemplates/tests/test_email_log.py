@@ -493,6 +493,17 @@ class EmailLogAdminTest(EmailLogTestCase):
         url = "%s%s/resend/" % (self.url, self.failed.pk)
         self.assertEqual(self.client.post(url).status_code, 403)
 
+    def test_only_superusers_see_the_content(self):
+        staff = User.objects.create_user(
+            "staff", "staff@example.com", "x", is_staff=True
+        )
+        staff.user_permissions.add(Permission.objects.get(codename="view_emaillog"))
+        self.client.force_login(staff)
+        response = self.client.get("%s%s/change/" % (self.url, self.failed.pk))
+        self.assertContains(response, "anna@example.com")
+        self.assertContains(response, "Only superusers can see the content.")
+        self.assertNotContains(response, "&lt;p&gt;Hello Anna")
+
 
 class CleanupTest(EmailLogTestCase):
     def test_old_sent_emails_are_deleted_failed_ones_kept(self):

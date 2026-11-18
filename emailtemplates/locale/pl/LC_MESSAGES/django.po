@@ -632,3 +632,6 @@ msgstr "Wersja domyślna: %s"
 #: widgets.py:16
 msgid "The preview could not be updated:"
 msgstr "Nie udało się odświeżyć podglądu:"
+
+msgid "Only superusers can see the content."
+msgstr "Tylko superużytkownicy mogą zobaczyć treść."
