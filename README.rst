@@ -113,7 +113,9 @@ Usage
    migration, see `Creating email templates`_. Its content starts as a copy of the file.
    Files added as *Email attachments* and linked to the template are attached to every
    email, or, with *send as link*, passed to the context as ``default_attachments`` (name,
-   URL pairs).
+   URL pairs). Only documents, images and archives can be uploaded (see
+   ``emailtemplates.constants.ATTACHMENT_EXTENSIONS``): the files are public in ``MEDIA``, where HTML or SVG could
+   run scripts in the session of a recipient.
 
 Default versions
 ----------------
@@ -348,9 +350,16 @@ Previews
 * *Show email preview* on an email template renders it with ``EmailFromTemplate``, as it
   is sent - with its layout, subject, preheader and blocks - filled with the example
   context from the registry. Example values of
-  ``help_context`` are fixed; for real objects pass ``preview_context`` to ``register()``,
+  ``help_context`` are fixed; for objects pass ``preview_context`` to ``register()``,
   a dict or a callable returning one, called on every preview, e.g.
-  ``preview_context=lambda: {"order": Order.objects.first()}``.
+  ``preview_context=lambda: {"order": Order(number="12345", total=99)}``.
+
+  Prefer unsaved example objects to real records (``Order.objects.first()``): templates
+  call methods of the objects in their context, so a template written in the admin, or
+  typed into the live preview, can call a method changing data, e.g.
+  ``{{ order.cancel }}``. Django does not call methods marked ``alters_data = True`` -
+  ``save()``, ``delete()`` and those of querysets are - so mark your own methods changing
+  data that way too.
 * *Show layout preview* on a layout renders the header, the footer and the styles with a
   placeholder in place of the email content. It has no context, so variables used in the
   header or the footer render empty.
@@ -542,8 +551,8 @@ Changelog
 * The rich text editor shows the content with the styles of the layout and gets a
   *Formats* button when ``style_formats`` are configured.
 * Layouts may be whole HTML documents: the styles go before ``</head>`` of the header.
-* ``preview_context`` of ``register()``: context of the admin preview, e.g. with model
-  instances.
+* ``preview_context`` of ``register()``: context of the admin preview, e.g. with unsaved
+  model instances.
 * Live preview of the email next to the content editor, updated while editing, before
   saving.
 * Default versions: email templates keep a snapshot of their template file; the admin
@@ -566,6 +575,12 @@ Changelog
   (``msg.body``) is the plain text and the HTML is an alternative; previously the body was
   the HTML with ``content_subtype = "html"``. ``EmailFromTemplate.content_subtype`` is
   removed.
+* **Backward incompatible**: "Send to all users" sends the mass email with a POST (a GET
+  returns 405); an overridden ``admin/emailtemplates/massemailmessage/change_form.html``
+  linking to ``send_mass_email`` needs a form with ``{% csrf_token %}``.
+* ``MassEmailMessage.send()`` queues the emails with ``send_later()`` (by Celery with
+  ``EMAILTEMPLATES_CELERY``), locking the message so that it is sent once; it returns
+  True once the emails are queued, failures are in the email history.
 
 2.0.0
 -----

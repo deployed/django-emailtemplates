@@ -153,14 +153,8 @@ msgstr ""
 "oder Senden aus der Shell erzwingen"
 
 #: emailtemplates/views.py:62
-msgid "Mass email sent successfully"
-msgstr "Massen-E-Mail erfolgreich gesendet"
-
-#: emailtemplates/views.py:65
-msgid "Error occurred when trying to send mass email message."
-msgstr ""
-"Beim Versuch, eine Massen-E-Mail-Nachricht zu senden, ist ein Fehler "
-"aufgetreten"
+msgid "Mass email was queued for sending."
+msgstr "Massen-E-Mail wurde zum Versand eingereiht."
 
 #: emailtemplates/admin.py:46
 msgid "Show layout preview"
@@ -227,3 +221,6 @@ msgstr "Hier steht der Inhalt der E-Mail-Vorlage"
 
 #~ msgid "email template"
 #~ msgstr "E-Mail-Vorlage"
+
+msgid "Only superusers can see the content."
+msgstr "Nur Superuser können den Inhalt sehen."

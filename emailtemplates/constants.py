@@ -1,0 +1,23 @@
+# Attachments are public files in MEDIA, often served from the domain of the site: HTML,
+# SVG or XML uploaded in the admin could run scripts there, in the session of a recipient.
+ATTACHMENT_EXTENSIONS = [
+    "pdf",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "ppt",
+    "pptx",
+    "odt",
+    "ods",
+    "odp",
+    "rtf",
+    "txt",
+    "csv",
+    "png",
+    "jpg",
+    "jpeg",
+    "gif",
+    "webp",
+    "zip",
+]

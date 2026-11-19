@@ -10,7 +10,12 @@ from django.test import TestCase
 from django.utils import translation
 
 from emailtemplates.helpers import TemplateSourceLoader
-from emailtemplates.models import EmailTemplate, MassEmailAttachment, MassEmailMessage
+from emailtemplates.models import (
+    EmailLog,
+    EmailTemplate,
+    MassEmailAttachment,
+    MassEmailMessage,
+)
 from emailtemplates.registry import NotRegistered, email_templates
 
 
@@ -77,7 +82,8 @@ class MassEmailMessageTest(TestCase):
 
     def test_send(self):
         recipients = ["person@example.com"]
-        sent = self.mass_email_message.send(recipients)
+        with self.captureOnCommitCallbacks(execute=True):
+            sent = self.mass_email_message.send(recipients)
         self.assertTrue(sent)
         self.assertTrue(self.mass_email_message.sent)
         self.assertEqual(mail.outbox[0].to, recipients)
@@ -87,6 +93,13 @@ class MassEmailMessageTest(TestCase):
             mail.outbox[0].alternatives, [("<p>Treść emaila</p>", "text/html")]
         )
 
+    def test_send_twice_sends_once(self):
+        self.assertTrue(self.mass_email_message.send(["person@example.com"]))
+        stale = MassEmailMessage.objects.get(pk=self.mass_email_message.pk)
+        stale.date_sent = None  # loaded before the first request marked it sent
+        self.assertFalse(stale.send(["person@example.com"]))
+        self.assertEqual(EmailLog.objects.count(), 1)
+
     def test_send_with_attachments(self):
         attachment = MassEmailAttachment.objects.create(
             attachment_file=File(
@@ -95,7 +108,8 @@ class MassEmailMessageTest(TestCase):
             mass_email_message=self.mass_email_message,
         )
         recipients = ["person@example.com"]
-        sent = self.mass_email_message.send(recipients)
+        with self.captureOnCommitCallbacks(execute=True):
+            sent = self.mass_email_message.send(recipients)
         self.assertTrue(sent)
         attachments = mail.outbox[0].attachments
         self.assertEqual(len(attachments), 1)

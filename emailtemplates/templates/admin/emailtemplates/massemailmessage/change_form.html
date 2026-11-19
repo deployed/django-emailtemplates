@@ -2,7 +2,10 @@
 {% load i18n %}
 {% block object-tools-items %}
   <li>
-    <a href="{% url 'send_mass_email' pk=original.pk %}">{% trans "Send to all users" %}</a>
+    <form method="post" action="{% url 'send_mass_email' pk=original.pk %}">
+      {% csrf_token %}
+      <button type="submit" class="button">{% trans "Send to all users" %}</button>
+    </form>
   </li>
   {{ block.super }}
 {% endblock %}
